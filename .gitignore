@@ -1,3 +1,6 @@
 /build
 /.vscode
 # .gitignore
+/socket_test/build
+/socket_test/client
+socket_test/server

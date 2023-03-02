@@ -157,7 +157,6 @@ public:
         Task warp_task = [task](){
             (*task)();
         };
-
         __task_queue.push(warp_task);
         __notify_lock.notify_one();
         return task->get_future();
