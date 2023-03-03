@@ -5,10 +5,15 @@
 #include<iostream>
 #include<errno.h>
 #include<unistd.h>
+#include<time.h>
 #include"recv_send.h"
-
+char read_buffer[256];
+char write_buffer[256];
 int main()
 {
+    bzero(read_buffer,sizeof(char)*256);
+    bzero(write_buffer,sizeof(char)*256);
+
     //client
     //build clien address
     const char * ip = "192.168.1.19\0";//my ip
@@ -47,19 +52,19 @@ int main()
     //connect complete
     //socket_fd <------> server
     //send something
-    char buff[256];
-    bzero(buff,sizeof(char)*256);
-    char send_buf[256] = "hi server\0";
-    sendMessage(socket_fd,send_buf,strlen(send_buf));
-    std::cout<<"send a message to server:"<<send_buf<<std::endl;
-
-    recvMessage(socket_fd,buff,256);
-    std::cout<<"recv from server:"<<buff<<std::endl;
-    sendMessage(socket_fd,send_buf,strlen(send_buf));
-    std::cout<<"send a message to server:"<<send_buf<<std::endl;
-
-    recvMessage(socket_fd,buff,256);
-    std::cout<<"recv from server:"<<buff<<std::endl;
+    bzero(write_buffer,sizeof(char)*256);
+    strncpy(write_buffer,"hellow server\0",15);
+    sendMessage(socket_fd,write_buffer,strlen(write_buffer));
+    std::cout<<"send a message to server:"<<write_buffer<<std::endl;
+    recvMessage(socket_fd,read_buffer,256);
+    std::cout<<"recv from server:"<<read_buffer<<std::endl;
+    sleep(5);
+    bzero(write_buffer,sizeof(char)*256);
+    strncpy(write_buffer,"hellow server\0",15);
+    sendMessage(socket_fd,write_buffer,strlen(write_buffer));
+    std::cout<<"send a message to server:"<<write_buffer<<std::endl;
+    recvMessage(socket_fd,read_buffer,256);
+    std::cout<<"recv from server:"<<read_buffer<<std::endl;
 
     // sendMessage(socket_fd,send_buf,strlen(send_buf));
     // std::cout<<"send a message to server:"<<send_buf<<std::endl;
