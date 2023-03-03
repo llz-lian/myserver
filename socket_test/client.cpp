@@ -4,7 +4,8 @@
 #include<string.h>
 #include<iostream>
 #include<errno.h>
-
+#include<unistd.h>
+#include"recv_send.h"
 
 int main()
 {
@@ -14,7 +15,7 @@ int main()
     sockaddr_in client_addr;
     bzero(&client_addr,sizeof(sockaddr_in));
 
-    client_addr.sin_port = htons(9999);
+    client_addr.sin_port = htons(1234);
     client_addr.sin_family = PF_INET;
     inet_pton(PF_INET,ip,&client_addr.sin_addr);
 
@@ -22,7 +23,7 @@ int main()
     //create socket
     int socket_fd = socket(PF_INET,SOCK_STREAM,0);
     //you can bind
-    int bind_ret = ::bind(socket_fd,(sockaddr *)(&client_addr),sizeof(sockaddr_in));
+    // int bind_ret = ::bind(socket_fd,(sockaddr *)(&client_addr),sizeof(sockaddr_in));
 
 
     //prepare sercer address
@@ -46,16 +47,24 @@ int main()
     //connect complete
     //socket_fd <------> server
     //send something
-    char send_buf[256] = "hi server\0";
-    int send_ret = ::send(socket_fd,send_buf,strlen(send_buf),0);
-
-    std::cout<<"send a message to server:"<<send_buf<<std::endl;
-
-    //recv from server
     char buff[256];
     bzero(buff,sizeof(char)*256);
+    char send_buf[256] = "hi server\0";
+    sendMessage(socket_fd,send_buf,strlen(send_buf));
+    std::cout<<"send a message to server:"<<send_buf<<std::endl;
 
-    int recv_ret = ::recv(socket_fd,buff,256-1,0);
+    recvMessage(socket_fd,buff,256);
+    std::cout<<"recv from server:"<<buff<<std::endl;
+    sendMessage(socket_fd,send_buf,strlen(send_buf));
+    std::cout<<"send a message to server:"<<send_buf<<std::endl;
+
+    recvMessage(socket_fd,buff,256);
     std::cout<<"recv from server:"<<buff<<std::endl;
 
+    // sendMessage(socket_fd,send_buf,strlen(send_buf));
+    // std::cout<<"send a message to server:"<<send_buf<<std::endl;
+    // //recv from server
+    // recvMessage(socket_fd,buff,256);
+    // std::cout<<"recv from server:"<<buff<<std::endl;
+    close(socket_fd);
 }

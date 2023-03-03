@@ -1,7 +1,7 @@
 #include"socket_stuff.h"
-
+#include"recv_send.h"
 #include<iostream>
-
+#include<stdexcept>
 char buffer[256];
 
 int main()
@@ -27,8 +27,13 @@ int main()
         return -1;
     }
     ret = listen(sock_fd,5);
+
+    fd_set read_fds;
+    fd_set write_fds;
+    fd_set execption_fds;
     while(true)
     {
+        //accept connect
         sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         int client_fd = accept(sock_fd,(sockaddr * )(&client_addr),&(client_addr_len));
@@ -38,26 +43,14 @@ int main()
             return -1;
         }
         char remote[INET_ADDRSTRLEN];
-        std::cout<<"connect success with ip:"<<inet_ntop(PF_INET,&client_addr.sin_addr,remote,INET_ADDRSTRLEN)<<" port:"<<ntohs(client_addr.sin_port)<<std::endl;
-
-        int recv_ret = ::recv(client_fd,buffer,256,0);
-        if(recv_ret<0)
-        {
-            std::cerr<<strerror(errno)<<std::endl;
-            return -1;
-        }
-
-
+        std::cout<<"connect success with ip:"<<inet_ntop(PF_INET,&client_addr.sin_addr,remote,INET_ADDRSTRLEN)
+                <<" port:"<<ntohs(client_addr.sin_port)
+                <<" client fd:"<<client_fd<<std::endl;
+        recvMessage(client_fd,buffer,256);
+        bzero(buffer,sizeof(char)*256);
         strncpy(buffer,"hellow client\0",15);
-        int send_ret = ::send(client_fd,buffer,strlen(buffer),0);
-        if(send_ret<0)
-        {
-            std::cerr<<strerror(errno)<<std::endl;
-            return -1;
-        }
-        //close tcp connect by server
-        close(client_fd);
+        sendMessage(client_fd,buffer,strlen(buffer));
     }
-
+    
 
 }
