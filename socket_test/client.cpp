@@ -71,5 +71,9 @@ int main()
     // //recv from server
     // recvMessage(socket_fd,buff,256);
     // std::cout<<"recv from server:"<<buff<<std::endl;
-    close(socket_fd);
+    
+    //close write but can read
+    ::shutdown(socket_fd,SHUT_WR);
+    recvMessage(socket_fd,read_buffer,256);
+    std::cout<<"recv from server:"<<read_buffer<<std::endl;
 }

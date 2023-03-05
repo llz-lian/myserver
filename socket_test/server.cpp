@@ -83,7 +83,7 @@ int main()
                 {
                     //client closed
                     //you can say goodbye ↓
-                    //send(pollfd.fd,"goodbye");
+                    send(pollfd.fd,"goodbye",8,0);
                     poll_listen.erase(poll_listen.begin()+i);
                 }else
                 {
