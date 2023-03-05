@@ -4,12 +4,12 @@
 #include<vector>
 const size_t MAX_BUFFER_SIZE = 256;
 
-char read_buffer[MAX_BUFFER_SIZE];
+char read_buffer[1];
 char write_buffer[MAX_BUFFER_SIZE];
 
 int main()
 {
-    bzero(read_buffer,sizeof(char)*MAX_BUFFER_SIZE);
+    bzero(read_buffer,sizeof(char)*1);
     bzero(write_buffer,sizeof(char)*MAX_BUFFER_SIZE);
     //set server address
     int port =  8888;
@@ -46,6 +46,7 @@ int main()
 
     ::pollfd server_listen_poll_fd;
     server_listen_poll_fd.fd = server_sock_fd;
+    // getsockopt() get ERR
     server_listen_poll_fd.events = POLLIN|POLLERR;
     poll_listen.push_back(server_listen_poll_fd);
     while(true)
@@ -91,8 +92,13 @@ int main()
                     {
                         //can read
                         //read a message
-                        recvMessage(pollfd.fd,read_buffer,MAX_BUFFER_SIZE);
-                        std::cout<<"recive message from client:"<<read_buffer<<std::endl;
+
+                        //if fd non-bolck must while read but blocked here
+                        while (recvMessage(pollfd.fd,read_buffer,1))
+                        {
+                            /* code */
+                            std::cout<<"recive message from client:"<<read_buffer<<std::endl;
+                        }
                         if(pollfd.revents&POLLOUT)
                         {
                             //can write
