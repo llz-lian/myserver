@@ -82,6 +82,8 @@ int main()
                 if(pollfd.revents&POLLRDHUP)
                 {
                     //client closed
+                    //you can say goodbye ↓
+                    //send(pollfd.fd,"goodbye");
                     poll_listen.erase(poll_listen.begin()+i);
                 }else
                 {
