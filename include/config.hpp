@@ -1,7 +1,7 @@
 #pragma once
 
 
-const int SERVER_PORT = 8888;
+const int SERVER_PORT = 18888;
 
 
 const int NUM_WORKERS = 1;

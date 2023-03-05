@@ -50,6 +50,8 @@ public:
                     //accept error
                     continue;
                 }
+                //non block
+                setNonBlock(client_fd);
                 workers[now_choose_workers++].addFd(client_fd);
             }else
             {

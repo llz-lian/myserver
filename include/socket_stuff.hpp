@@ -35,25 +35,25 @@ int getServerFd(int port)
     server_addr.sin_family = PF_INET;
     //set ip if u want
     //inet_pton(PF_INET,your_ip,&server_addr.sin_addr);
-    
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     //create scoket non block
     int server_sock_fd = socket(PF_INET,SOCK_STREAM|SOCK_NONBLOCK,0);
     if(server_sock_fd<0)
     {
         std::cerr<<strerror(errno)<<std::endl;
-        return -1;
+        throw std::runtime_error("bad server sockfd\n");
     }
     int ret_bind = ::bind(server_sock_fd,(const sockaddr*)(&server_addr),sizeof(sockaddr_in));
     if(ret_bind<0)
     {
         std::cerr<<strerror(errno)<<std::endl;
-        return -1;
+        throw std::runtime_error("bad bind\n");
     }
     int listen_ret = ::listen(server_sock_fd,10);
     if(listen_ret<0)
     {
         std::cerr<<strerror(errno)<<std::endl;
-        return -1;
+        throw std::runtime_error("bad listen\n");
     }
 
     return server_sock_fd;

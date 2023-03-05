@@ -21,12 +21,12 @@ void MyWrite(Event *event)
 int main()
 {
     Server server;
-    std::vector<std::function<void (Event *)>> handles;
-    std::function<void (Event *)> read_fuc = MyRead;
-    std::function<void (Event *)> process_fuc = MyProcess;
-    std::function<void (Event *)> write_fuc = MyWrite;
-    handles[0] = read_fuc;
-    handles[1] = process_fuc;
-    handles[2] = write_fuc;
+    std::vector<std::function<void (Event *)>> handles = {MyRead,MyProcess,MyWrite};
+    // std::function<void (Event *)> read_fuc = MyRead;
+    // std::function<void (Event *)> process_fuc = MyProcess;
+    // std::function<void (Event *)> write_fuc = MyWrite;
+    // handles[0] = read_fuc;
+    // handles[1] = process_fuc;
+    // handles[2] = write_fuc;
     server.init(handles);
 }
