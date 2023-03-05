@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # 设置工程名称
-set(PROJECT_NAME thread_pool_test)
+set(PROJECT_NAME server_test)
  
 set(PROJECT_VERSION "0.01")
  

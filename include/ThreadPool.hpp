@@ -1,3 +1,5 @@
+#pragma once
+
 #include<functional>
 #include<thread>
 #include<queue>
@@ -14,6 +16,9 @@ private:
     std::mutex __mutex;
     std::queue<T> __queue;
 public:
+    LockQueue(){}
+    LockQueue(LockQueue & ){}
+    LockQueue(LockQueue && ){}
     size_t size()
     {
         std::unique_lock<std::mutex> lock(__mutex);
@@ -117,6 +122,20 @@ public:
         for(int i = 0;i<num_threads;i++)
             __addOneThreads();
     };
+    ThreadPool(ThreadPool & tp){
+        thread_num = tp.thread_num;
+        __isrun = true;
+        for(int i = 0;i<thread_num;i++)
+            __addOneThreads();
+    };
+    ThreadPool(ThreadPool && tp){
+        thread_num = tp.thread_num;
+        __isrun = true;
+        for(int i = 0;i<thread_num;i++)
+            __addOneThreads();
+    };
+
+
     ~ThreadPool(){
         shutdown();
     };
