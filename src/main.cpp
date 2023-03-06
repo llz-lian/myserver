@@ -61,7 +61,6 @@ int main()
     // handles[0] = read_fuc;
     // handles[1] = process_fuc;
     // handles[2] = write_fuc;
-
     //regist handles
     server.init(handles);
     //run server
