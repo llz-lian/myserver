@@ -106,7 +106,7 @@ public:
         }
         return std::function<void()>([this,now_choose_handle](){
                 now_choose_handle(this);
-                toNextState();
+                this->toNextState();
                 });
     }
     //state
@@ -114,7 +114,7 @@ public:
     {
         if(state == NEED_CLOSE)
         {
-            pool->submit(getHandle());
+            getHandle();
             return;
         }
         int to_next_state = 0;
@@ -131,7 +131,7 @@ public:
         {    
             return;
         }
-        pool->submit(getHandle());
+        getHandle();
     }
     void resetFlags()
     {
