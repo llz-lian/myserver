@@ -1,6 +1,6 @@
 # A toy webserver
 ## over all structure
-![](imgs/server.jpg)
+![](https://github.com/llz-lian/myserver/blob/master/imgs/server.jpg)
 
 ## Compile from source code
 run ```cmake --build build```
