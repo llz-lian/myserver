@@ -85,16 +85,15 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
             // throw std::runtime_error("send error");
             return false;
     }
-    if(send_ret == 0)
+    event->write_bytes += send_ret;
+    if(send_ret == 0||event->write_bytes == message_len)
     {
         //nothing to send
         event->write_complete_flag = true;
         #ifdef DEBUG
         std::cout<<"write complete"<<std::endl;
         #endif
-        return true;
     }
-    event->write_bytes += send_ret;
     // std::cout<<"send "<<message_len<<" bytes\n";
     return true;
 }
@@ -106,6 +105,11 @@ bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
     int recv_ret = ::recv(recvFd,buf + event->read_bytes,buf_len - event->read_bytes,0);
     if(recv_ret<0)
     {
+        if(errno == EINTR)
+        {
+            return true;
+        }
+        //client closed or read_complete
         if((errno==EAGAIN)||(errno==EWOULDBLOCK))
         {
             //read complete
@@ -115,23 +119,23 @@ bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
             event->read_complete_flag = true;
             return true;
         }
-        if(errno == EINTR)
-        {
-            return true;
-        }
         std::cerr<<strerror(errno)<<std::endl;
         throw std::runtime_error("recv error");
     }
-    if(recv_ret==0)
+    event->read_bytes += recv_ret;
+    #ifdef DEBUG
+    std::cout<<event->read_buffer.size()<<std::endl;
+    std::cout<<event->read_buffer<<std::endl;
+    #endif
+    if(event->read_bytes<event->read_buffer_size||recv_ret==0)
     {
-        //client closed
-        return false;
+        event->read_complete_flag = true;
+        return true;
     }
-    if(recv_ret == event->read_buffer_size)
+    if(event->read_bytes == event->read_buffer_size)
     {
         event->read_buffer_size = event->read_buffer_size * 2;
         event->read_buffer.resize(event->read_buffer_size);
     }
-    event->read_bytes += recv_ret;
     return true;
 }

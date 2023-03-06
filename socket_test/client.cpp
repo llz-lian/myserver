@@ -58,7 +58,7 @@ int main()
     std::cout<<"send a message to server:"<<write_buffer<<std::endl;
     recvMessage(socket_fd,read_buffer,256);
     std::cout<<"recv from server:"<<read_buffer<<std::endl;
-    sleep(5);
+    // sleep(5);
     bzero(write_buffer,sizeof(char)*256);
     strncpy(write_buffer,"hellow server\0",15);
     sendMessage(socket_fd,write_buffer,strlen(write_buffer));

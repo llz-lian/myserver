@@ -1,25 +1,53 @@
 //bind test
 #include<iostream>
 #include"include/Server.hpp"
-
+#include<time.h>
 void MyRead(Event *event)
 {
-    int read_fd = event->fd;
-    recvMessageNonBlock(event,&event->read_buffer[0],event->read_buffer_size);
-    std::cout<<"call read\n";
+    // if(event->state == Event::NEED_CLOSE)
+    //     return;
+    // int read_fd = event->fd;
+    // if(!recvMessageNonBlock(event,&event->read_buffer[0],event->read_buffer_size))
+    // {
+    //     event->state = Event::NEED_CLOSE;
+    // }
+    // std::cout<<"call read\n";
 }
 void MyProcess(Event *event)
 {
-    //prepare write buffer and write stuff
-    event->write_buffer = "hello client";
-    event->write_bytes = 0;
-    event->process_complete_flag = true;
-    std::cout<<"call process\n";
+    // if(event->state == Event::NEED_CLOSE)
+    //     return;
+    // //prepare write buffer and write stuff
+    // event->write_buffer = "<html>hello client</html>";
+    // event->write_bytes = 0;
+    // event->process_complete_flag = true;
+    // std::cout<<"call process\n";
 }
 void MyWrite(Event *event)
 {
-    sendMessageNonBlock(event,&event->write_buffer[0],event->write_buffer.size());
-    std::cout<<"call write\n";
+    // if(event->state == Event::NEED_CLOSE)
+    //     return;
+    //if http 
+    //buil head here
+    //string http_head = buildHttpHead();
+    //and send head
+    // std::string http_head = "HTTP/1.0 200 OK\r\n";
+    // http_head += "Server:Linux Web Server \r\n";
+    // http_head += "Content-Length:2048\r\n";
+    // http_head += "Content-type:text/html\r\n\r\n";
+    // if(!sendMessageNonBlock(event,&http_head[0],http_head.size()))
+    // {
+    //     //set event state
+    //     event->state = Event::NEED_CLOSE;
+    // }
+    // //send body
+    // event->write_bytes=0;
+    // if(!sendMessageNonBlock(event,&event->write_buffer[0],event->write_buffer.size()))
+    // {
+    //     //set event state
+    //     event->state = Event::NEED_CLOSE;
+    // }
+    // std::cout<<"call write\n";
 }
 int main()
 {

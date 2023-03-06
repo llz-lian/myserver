@@ -2,7 +2,7 @@
 
 
 const int SERVER_PORT = 8888;
-const int READ_BUFFER_DEFALUT_SIZE = 64;
+const int READ_BUFFER_DEFALUT_SIZE = 256;
 
 
 

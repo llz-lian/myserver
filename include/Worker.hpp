@@ -74,16 +74,15 @@ public:
                     #endif
                     std::cout<<"fd is closed:"<<now_fd<<std::endl;
                     //close read
-                    //wait for complete
-                    // while(now_events->state!=Event::COMPLETE)
-                    // {
-                    //     continue;
-                    // }
-                    now_events->setClose();
-                    //remember not EPOLLRDHUP any more
-                    //flag set to zero
-                    //client not send 
-                    closeFd(now_events);
+                    if(!now_events)
+                    {
+                        now_events->setClose();
+                        //remember not EPOLLRDHUP any more
+                        //flag set to zero
+                        //client not send 
+                        //notify now_events not to read write process
+                        __sub_workers.submit(now_events->getHandle());
+                    }
                 }else if(!now_events)
                 {
                     //create and init events
@@ -95,7 +94,6 @@ public:
                 {
                     __sub_workers.submit(now_events->getHandle());
                 }
-
             }
             for(auto [fd,events]:fd_events)
             {
@@ -123,6 +121,9 @@ public:
         delete event;
         ::close(fd);
         active_fd_num--;
+        #ifdef DEBUG
+        std::cout<<"call closeFd:"<<fd<<std::endl;
+        #endif
     }
     void completeFd(Event * event)
     {   
@@ -134,7 +135,6 @@ public:
         // std::cout<<"call complete\n";
         return;
     }
-
     void run()
     {
         work();
@@ -153,6 +153,4 @@ private:
 
     //every worke has its own map
     HandleMap __handleMap;
-
-
 };

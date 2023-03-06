@@ -8,6 +8,7 @@
 #include"config.hpp"
 class HandleMap;
 class Event;
+void foo(){}
 class HandleMap
 {
 public:
@@ -94,31 +95,26 @@ public:
     Handle handle;
     std::function<void()> getHandle()
     {
+        if(!this)
+        {
+            std::function<void() > fuc = [](){foo();};
+            return fuc;
+        }
+            
         std::function<void(Event *) > now_choose_handle = handle.getHandle(state_to_string[state]);
         #ifdef DEBUG
         std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
         #endif
-        if(state == NEED_CLOSE)
-            return std::function<void()>([this,now_choose_handle](){
+        return std::function<void()>([this,now_choose_handle](){
                 if(!this)
                     return;
                 now_choose_handle(this);
+                toNextState();
                 });
-        return std::function<void()>([this,now_choose_handle](){
-            if(!this)
-                return;
-            now_choose_handle(this);
-            this->toNextState();
-            //remember add next mission to threadpool
-        });
     }
     //state
     void toNextState()
     {
-        if(errno == EFAULT)
-        {
-            state = NEED_CLOSE;
-        }
         if(state == NEED_CLOSE)
             return;
         int to_next_state = 0;
@@ -178,3 +174,6 @@ public:
     std::ThreadPool * pool;
     
 };
+
+
+
