@@ -33,10 +33,10 @@ int main()
 ```
 4. compile source code
 5. run server
-## project features
+## Project Features
 * scoket_test has poll and select example
 * use epoll edge trigger
 * c++ 11 threadpool
 * Round-Robin accept
-## thanks
+## Thanks
 thanks to &laquo;Linux高性能服务器编程&raquo;-游双
