@@ -106,32 +106,32 @@ public:
         }
         return std::function<void()>([this,now_choose_handle](){
                 now_choose_handle(this);
-                this->toNextState();
+                Event::toNextState(this);
                 });
     }
-    //state
-    void toNextState()
+    //static makesure can return
+    static void toNextState(Event * evnet)
     {
-        if(state == NEED_CLOSE)
+        if(evnet->state == NEED_CLOSE)
         {
-            getHandle();
+            evnet->getHandle()();
             return;
         }
         int to_next_state = 0;
-        if((read_complete_flag&&state == WAIT_READ) || 
-           (write_complete_flag&&state==WAIT_WRITE)||
-           (process_complete_flag&& state == WAIT_PROCCESS)||
-           (state == COMPLETE))
+        if((evnet->read_complete_flag&&evnet->state == WAIT_READ) || 
+           (evnet->write_complete_flag&&evnet->state==WAIT_WRITE)||
+           (evnet->process_complete_flag&& evnet->state == WAIT_PROCCESS)||
+           (evnet->state == COMPLETE))
         {
             to_next_state = 1;
         }
-        state = (state + to_next_state)%(NEED_CLOSE);
+        evnet->state = (evnet->state + to_next_state)%(NEED_CLOSE);
         //now complete task
-        if(state == COMPLETE)
+        if(evnet->state == COMPLETE)
         {    
             return;
         }
-        getHandle();
+        evnet->getHandle()();
     }
     void resetFlags()
     {

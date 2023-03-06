@@ -141,7 +141,7 @@ public:
         //do something
         //change to WAIT_READ
         event->resetFlags();
-        event->toNextState();
+        Event::toNextState(event);
         // std::cout<<"call complete\n";
         return;
     }
