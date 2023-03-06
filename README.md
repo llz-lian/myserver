@@ -1,13 +1,17 @@
 # A toy webserver
+## over all structure
+![](imgs/server.jpg)
+
 ## Compile from source code
 run ```cmake --build build```
 ## Use Example
-1. write read, write and process functions
+1. set config.hpp
+2. write read, write and process functions
 ```
 //like this
 void func(Event *);
 ```
-2. regist read write process functions 
+3. regist read write process functions 
 ```
 int main()
 {
@@ -27,4 +31,8 @@ int main()
     server.run();
 }
 ```
-3. run server
+4. compile source code
+5. run server
+
+## thanks
+thanks to &laquo;Linux高性能服务器编程&raquo;-游双
