@@ -89,25 +89,22 @@ public:
     Event(Event && event)
         :fd(event.fd),handle(event.handle),pool(event.pool)
     {__init();};
-    ~Event(){};
-    // std::mutex own_lock;
+    ~Event(){
+        fd = -1;
+    };
     //handle
     Handle handle;
     std::function<void()> getHandle()
     {
-        if(!this)
-        {
-            std::function<void() > fuc = [](){foo();};
-            return fuc;
-        }
-            
         std::function<void(Event *) > now_choose_handle = handle.getHandle(state_to_string[state]);
         #ifdef DEBUG
         std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
         #endif
+        if(state == NEED_CLOSE)
+        {
+            return std::function<void()>([this,now_choose_handle](){now_choose_handle(this);});
+        }
         return std::function<void()>([this,now_choose_handle](){
-                if(!this)
-                    return;
                 now_choose_handle(this);
                 toNextState();
                 });
@@ -116,7 +113,10 @@ public:
     void toNextState()
     {
         if(state == NEED_CLOSE)
+        {
+            pool->submit(getHandle());
             return;
+        }
         int to_next_state = 0;
         if((read_complete_flag&&state == WAIT_READ) || 
            (write_complete_flag&&state==WAIT_WRITE)||
@@ -125,21 +125,14 @@ public:
         {
             to_next_state = 1;
         }
-        
         state = (state + to_next_state)%(NEED_CLOSE);
+        //now complete task
         if(state == COMPLETE)
         {    
             return;
         }
         pool->submit(getHandle());
     }
-    void setClose()
-    {
-        // std::unique_lock<std::mutex> task_lock(lock);
-        state = NEED_CLOSE;
-    }
-
-
     void resetFlags()
     {
         // std::unique_lock<std::mutex> task_lock(lock);
@@ -167,6 +160,7 @@ public:
     bool read_complete_flag = false;
     bool write_complete_flag = false;
     bool process_complete_flag = false;
+
     //bytes need to write
     size_t write_bytes = 0;
     size_t read_bytes = 0;
