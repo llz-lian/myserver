@@ -33,32 +33,45 @@ public:
         }
     }
 
-    void run(std::vector<Worker> & workers)
+    void run(std::vector<Worker*> & workers)
     {
-        int ret = epoll_wait(__epoll_fd,&__server_fd_event,1,-1);
-        for(int i = 0;i<ret;i++)
+        while (true)
         {
-            int server_fd = __server_fd_event.data.fd;
-            if(server_fd == __server_fd)
+            int ret = epoll_wait(__epoll_fd,&__server_fd_event,1,-1);
+            if(ret<0)
             {
-                sockaddr_in client_addr;
-                bzero(&client_addr,sizeof(sockaddr_in));
-                socklen_t addr_len;
-                int client_fd = ::accept(server_fd,(sockaddr * )(&client_addr),&addr_len);
-                if(client_fd<0)
-                {
-                    //accept error
+                if(errno == EINTR)
                     continue;
-                }
-                //non block
-                setNonBlock(client_fd);
-                workers[now_choose_workers++].addFd(client_fd);
-            }else
+                std::cerr<<"acceptor epoll wait return -1:"<<strerror(errno)<<std::endl;
+                throw std::runtime_error("epoll wait what?\n");
+            }
+            for(int i = 0;i<ret;i++)
             {
-                std::cerr<<"???\n";
-                throw std::runtime_error("epoll listen what?\n");
+                int server_fd = __server_fd_event.data.fd;
+                if(server_fd == __server_fd)
+                {
+                    sockaddr_in client_addr;
+                    bzero(&client_addr,sizeof(sockaddr_in));
+                    socklen_t addr_len;
+                    int client_fd = ::accept(server_fd,(sockaddr * )(&client_addr),&addr_len);
+                    if(client_fd<0)
+                    {
+                        //accept error
+                        continue;
+                    }
+                    //non block
+                    setNonBlock(client_fd);
+                    std::cout<<"arrive fd:"<<client_fd<<std::endl;
+                    workers[now_choose_workers]->addFd(client_fd);
+                    now_choose_workers = (now_choose_workers + 1) % __num_workers;
+                }else
+                {
+                    std::cerr<<"???\n";
+                    throw std::runtime_error("epoll listen what?\n");
+                }
             }
         }
+        
     }
 private:
     int __server_fd;
@@ -67,43 +80,59 @@ private:
     int now_choose_workers = 0;
     ::epoll_event __server_fd_event;
 };
-
 class Server
 {
 public:
-    Server():__workers_pool(NUM_WORKERS),__acceptor(SERVER_PORT,NUM_WORKERS)
+    friend void foo(Server * server,int i);
+    Server():__workers_pool(NUM_WORKERS,"Server::__workers_pool"),__acceptor(SERVER_PORT,NUM_WORKERS)
     {
 
     };
+    ~Server()
+    {
+        for(int i = 0;i<NUM_WORKERS;i++)
+        {
+            delete __workers[i];
+            __workers[i] = nullptr;
+        }
+    }
     void init(std::vector<std::function<void (Event *)>> handles)
     {
         __map.bindHandle(handles[0],"READ");
-        __map.bindHandle(handles[1],"WRITE");
-        __map.bindHandle(handles[2],"PROCCESS");
+        __map.bindHandle(handles[1],"PROCCESS");
+        __map.bindHandle(handles[2],"WRITE");
+        __workers.resize(NUM_WORKERS);
         for(int i = 0;i<NUM_WORKERS;i++)
         {
-            __workers.emplace_back(Worker(__map,NUM_WORKERS_THREADS));
+            std::string belong = "__workers[" + std::to_string(i) + "]";
+            __workers[i] = new Worker(__map,NUM_WORKERS_THREADS,belong);
         }
         for(auto && worker:__workers)
         {
-            worker.init();
+            worker->init();
         }
+    }
+    static void foo(Server * server,int i)
+    {
+        server->__workers[i]->run();
     }
     void run()
     {
-        for(auto && worker:__workers)
+        for(int i = 0;i<NUM_WORKERS;i++)
         {
-            auto run = [&](){
-                worker.run();
-            };
-            __workers_pool.submit(run);
+            // auto run = [this,i](){
+            //     this->__workers[i].run();
+            // };
+            __workers_pool.submit(Server::foo,this,i);
         }
         __acceptor.run(__workers);
     }
 private:
     std::ThreadPool __workers_pool;
     //Worker(HandleMap & handlemap,int sub_workers)
-    std::vector<Worker> __workers;
+    std::vector<Worker*> __workers;
+
+
     HandleMap __map;
     Acceptor __acceptor;
 

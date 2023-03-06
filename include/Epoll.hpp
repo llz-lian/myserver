@@ -10,7 +10,7 @@
 class Epoll
 {
 public:
-    Epoll()
+    Epoll(int sleep_times = -1):__sleep_times(sleep_times)
     {
         //create epoll
         __epoll_fd = epoll_create(1);
@@ -18,6 +18,14 @@ public:
         {
             std::cerr<<"Epoll create: "<<strerror(errno)<<std::endl;
         }
+    }
+    Epoll(const Epoll& e):__sleep_times(e.__sleep_times)
+    {
+
+    }
+    Epoll(const Epoll && e):__sleep_times(e.__sleep_times)
+    {
+
     }
     bool addFd(int fd)
     {
@@ -31,11 +39,17 @@ public:
 
     bool removeFd(int fd)
     {
+        bzero(&__events[fd],sizeof(::epoll_event));
         return __epoll_ctl(EPOLL_CTL_DEL,fd,nullptr);
+    }
+    bool modFd(int fd,uint32_t flags)
+    {
+        __events[fd].events = flags;
+        return __epoll_ctl(EPOLL_CTL_MOD,fd,&__events[fd]);
     }
     auto wait()
     {
-        int epoll_wait_ret = epoll_wait(__epoll_fd,__events,MAX_EPOLL_LISTEN_EVENTS,-1);
+        int epoll_wait_ret = epoll_wait(__epoll_fd,__events,MAX_EPOLL_LISTEN_EVENTS,__sleep_times);
         if(epoll_wait<0)
         {
             std::cerr<<"Epoll wait: "<<strerror(errno)<<std::endl;
@@ -45,6 +59,7 @@ public:
     }
 private:
     int __epoll_fd;
+    int __sleep_times = -1;
     ::epoll_event __events[MAX_EPOLL_LISTEN_EVENTS];
     bool __epoll_ctl(int op,int fd,::epoll_event * now_event)
     {

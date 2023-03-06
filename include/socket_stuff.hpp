@@ -66,7 +66,7 @@ int getServerFd(int port)
 bool sendMessageNonBlock(Event* event,const char * message,const int message_len)
 {
     int sendFd = event->fd;
-    int send_ret = ::send(sendFd,message,message_len,0);
+    int send_ret = ::send(sendFd,message+event->write_bytes,message_len-event->write_bytes,0);
     //send return how many bits it send.
     if(send_ret<0)
     {
@@ -82,29 +82,37 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
                 return true;
             }
             std::cerr<<strerror(errno)<<std::endl;
-            throw std::runtime_error("send error");
+            // throw std::runtime_error("send error");
+            return false;
     }
     if(send_ret == 0)
     {
         //nothing to send
+        event->write_complete_flag = true;
+        #ifdef DEBUG
+        std::cout<<"write complete"<<std::endl;
+        #endif
         return true;
     }
-    event->write_bytes -= send_ret;
-    std::cout<<"send "<<message_len<<" bytes\n";
+    event->write_bytes += send_ret;
+    // std::cout<<"send "<<message_len<<" bytes\n";
     return true;
 }
 
 bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
 {
     int recvFd = event->fd;
-    bzero(buf,buf_len*sizeof(char));
-    int recv_ret = ::recv(recvFd,buf,buf_len,0);
+    bzero(buf+event->read_bytes,(buf_len - event->read_bytes)*sizeof(char));
+    int recv_ret = ::recv(recvFd,buf + event->read_bytes,buf_len - event->read_bytes,0);
     if(recv_ret<0)
     {
         if((errno==EAGAIN)||(errno==EWOULDBLOCK))
         {
             //read complete
+            #ifdef DEBUG
             std::cout<<"read complete"<<std::endl;
+            #endif
+            event->read_complete_flag = true;
             return true;
         }
         if(errno == EINTR)
@@ -119,5 +127,11 @@ bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
         //client closed
         return false;
     }
+    if(recv_ret == event->read_buffer_size)
+    {
+        event->read_buffer_size = event->read_buffer_size * 2;
+        event->read_buffer.resize(event->read_buffer_size);
+    }
+    event->read_bytes += recv_ret;
     return true;
 }

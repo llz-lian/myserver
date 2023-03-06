@@ -9,6 +9,7 @@
 #include<future>
 #include<stdexcept>
 #include<condition_variable>
+#include<string>
 template<class T>
 class LockQueue
 {
@@ -52,7 +53,6 @@ public:
         return __queue.front();
     }
 };
-
 #ifdef DEBUG_POOL
 #include<iostream>
 #endif
@@ -69,7 +69,7 @@ private:
     bool __isrun = false;
     condition_variable __notify_lock;
     int thread_num = 0;
-
+    string belong;
     void __addOneThreads()
     {
         if(!__isrun)
@@ -85,12 +85,18 @@ private:
                         break;
                     }
                     {
-                        unique_lock<mutex> wait_lock(this->__lock);
-                        if(this->__task_queue.empty())
                         {
                             //block at cv
-                            this->__notify_lock.wait(wait_lock);
+                            //wait_lock must RTTI
+                            unique_lock<mutex> wait_lock(this->__lock);
+                            #ifdef DEBUG_POOL
+                            std::cout<< belong <<"block"<<std::endl;
+                            #endif
+                            this->__notify_lock.wait(wait_lock,[this](){
+                                    return this->__isrun&&!__task_queue.empty();
+                            });
                         }
+
                         if(this->__isrun)
                         {
                             //queue is not empty
@@ -99,7 +105,15 @@ private:
                                 #ifdef DEBUG_POOL
                                 cout<<"thread get task\n";
                                 #endif
-                                auto && task = this->__task_queue.front();this->__task_queue.pop();
+                                Task task;
+                                {
+                                    unique_lock<mutex> wait_lock(this->__lock);
+                                    if(__task_queue.empty())
+                                        continue;
+                                    task = move(this->__task_queue.front());this->__task_queue.pop();
+                                }
+                                // auto && task = this->__task_queue.front();this->__task_queue.pop();
+
                                 //do task
                                 task();
                                 #ifdef DEBUG_POOL
@@ -116,19 +130,22 @@ private:
         );
     }
 public:
-    ThreadPool(int num_threads){
+    ThreadPool(int num_threads,string belong):belong(belong)
+    {
         thread_num = num_threads;
         __isrun = true;
         for(int i = 0;i<num_threads;i++)
             __addOneThreads();
     };
-    ThreadPool(ThreadPool & tp){
+    ThreadPool(const ThreadPool & tp):belong(tp.belong)
+    {
         thread_num = tp.thread_num;
         __isrun = true;
         for(int i = 0;i<thread_num;i++)
             __addOneThreads();
     };
-    ThreadPool(ThreadPool && tp){
+    ThreadPool(const ThreadPool && tp):belong(tp.belong)
+    {
         thread_num = tp.thread_num;
         __isrun = true;
         for(int i = 0;i<thread_num;i++)
@@ -137,7 +154,9 @@ public:
 
 
     ~ThreadPool(){
-        
+        #ifdef DEBUG_POOL
+        cout<<"pool shutdown\n";
+        #endif
         shutdown();
     };
 
@@ -181,7 +200,10 @@ public:
         __notify_lock.notify_one();
         return task->get_future();
     }
-
+    // void forceNotify()
+    // {
+    //     __notify_lock.notify_one();
+    // }
 };
 
 

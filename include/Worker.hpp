@@ -14,18 +14,21 @@ class Worker
 public:
     //server: threadpool.submit(run);
     //epoll wait   send event to sub_worker  check fd time out 
-    Worker(HandleMap & handlemap,int sub_workers)
-        :__handleMap(__handleMap),__sub_workers(sub_workers)
+    Worker(HandleMap & handlemap,int sub_workers,std::string & pool_belong)
+        :__handleMap(handlemap),__sub_workers(sub_workers,pool_belong),__worker_epoll(WORKER_SLEEP_TIMES)
     {
         active_fd_num = 0;
     }
-
+    Worker(const Worker & w)
+        :__handleMap(w.__handleMap),__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
+    {
+        active_fd_num = 0;
+    }
     Worker(Worker && w)
-        :__handleMap(w.__handleMap),__sub_workers(w.__sub_workers)
+        :__handleMap(w.__handleMap),__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
     {
         active_fd_num = 0;
     }
-
     void init()
     {
         std::function<void(Event *)> close_func = [this](Event * event){
@@ -37,54 +40,78 @@ public:
         {
             this->completeFd(event);
         };
-        __handleMap.bindHandle(close_func,"COMPLETE");
+        __handleMap.bindHandle(complete_func,"COMPLETE");
     }
 
     void work()
     {
-        if(active_fd_num == 0)
+        while (true)
         {
-            std::unique_lock<std::mutex> lock(__lock);
-            __check_fd_num.wait(lock);
-        }
-        //fd num > 0
-        //wait_ret = [int num_active,epoll_event* events]
-        auto [num_active,ret_events] = __worker_epoll.wait();
-        for(int i = 0;i<num_active;i++)
-        {
-            int now_fd = ret_events[i].data.fd;
-            //events send to sub-worker
-            auto now_events = fd_events[now_fd];
-            if(!now_events)
+            if(active_fd_num == 0)
             {
-                //create and init events
-                Event * new_event = new Event(__handleMap,now_fd);
-                fd_events[now_fd] = new_event;
-                now_events = new_event;
+                std::unique_lock<std::mutex> lock(__lock);
+                __check_fd_num.wait(lock);
             }
-            if(ret_events[i].events&EPOLLRDHUP)
+            //fd num > 0
+            //wait_ret = [int num_active,epoll_event* events]
+            auto [num_active,ret_events] = __worker_epoll.wait();
+            std::cout<<"epool return\n";
+            if(num_active<0)
             {
-                //close read
-                now_events->setClose();
+                if(errno==EINTR)
+                    continue;
+                break;
             }
-            else if(ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
+            for(int i = 0;i<num_active;i++)
             {
-                __sub_workers.submit(now_events->getHandle());
-            }
-        }
-        for(auto [fd,events]:fd_events)
-        {
-            //poccess events timeout
-            //events must be COMPLETE
-            //set CLOSE
+                int now_fd = ret_events[i].data.fd;
+                //events send to sub-worker
+                auto && now_events = fd_events[now_fd];
+                if(ret_events[i].events&EPOLLRDHUP)
+                {
+                    #ifdef DEBUG
+                    std::cout<<"fd is closed:"<<now_fd<<std::endl;
+                    #endif
+                    std::cout<<"fd is closed:"<<now_fd<<std::endl;
+                    //close read
+                    //wait for complete
+                    // while(now_events->state!=Event::COMPLETE)
+                    // {
+                    //     continue;
+                    // }
+                    now_events->setClose();
+                    //remember not EPOLLRDHUP any more
+                    //flag set to zero
+                    //client not send 
+                    closeFd(now_events);
+                }else if(!now_events)
+                {
+                    //create and init events
+                    Event * new_event = new Event(__handleMap,now_fd,&__sub_workers);
+                    fd_events[now_fd] = new_event;
+                    __sub_workers.submit(new_event->getHandle());
+                }
+                else if(now_events->state==Event::COMPLETE && ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
+                {
+                    __sub_workers.submit(now_events->getHandle());
+                }
 
+            }
+            for(auto [fd,events]:fd_events)
+            {
+                //poccess events timeout
+                //events must be COMPLETE
+                //set CLOSE
+            }
         }
+        
+
     }
     void addFd(int fd)
     {
         __worker_epoll.addFd(fd);
         if(active_fd_num == 0)
-            __check_fd_num.notify_one();
+            __check_fd_num.notify_all();
         active_fd_num++;
     }
 
@@ -92,15 +119,19 @@ public:
     {
         int fd = event->fd;
         __worker_epoll.removeFd(fd);
+        fd_events[fd] = nullptr;
         delete event;
         ::close(fd);
+        active_fd_num--;
     }
     void completeFd(Event * event)
     {   
         int fd = event->fd;
         //do something
         //change to WAIT_READ
+        event->resetFlags();
         event->toNextState();
+        // std::cout<<"call complete\n";
         return;
     }
 
@@ -119,7 +150,9 @@ private:
     std::mutex __lock;
 
     std::unordered_map<int,Event*> fd_events;
-    HandleMap & __handleMap;
+
+    //every worke has its own map
+    HandleMap __handleMap;
 
 
 };

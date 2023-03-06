@@ -74,6 +74,6 @@ int main()
     
     //close write but can read
     ::shutdown(socket_fd,SHUT_WR);
-    recvMessage(socket_fd,read_buffer,256);
-    std::cout<<"recv from server:"<<read_buffer<<std::endl;
+    // recvMessage(socket_fd,read_buffer,256);
+    // std::cout<<"recv from server:"<<read_buffer<<std::endl;
 }
