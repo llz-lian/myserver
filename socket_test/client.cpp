@@ -53,14 +53,17 @@ int main()
     //socket_fd <------> server
     //send something
     bzero(write_buffer,sizeof(char)*256);
-    strncpy(write_buffer,"hellow server\0",15);
+    strncpy(write_buffer,"GET / HTTP/1.0\r\nUser-Agent: client 1.0\r\nHost: 127.0.0.1\r\n\r\n",60);    
     sendMessage(socket_fd,write_buffer,strlen(write_buffer));
     std::cout<<"send a message to server:"<<write_buffer<<std::endl;
+
     recvMessage(socket_fd,read_buffer,256);
     std::cout<<"recv from server:"<<read_buffer<<std::endl;
-    // sleep(5);
+    sleep(5);
+
     bzero(write_buffer,sizeof(char)*256);
-    strncpy(write_buffer,"hellow server\0",15);
+    strncpy(write_buffer,"GET / HTTP/1.0\r\nUser-Agent: client 1.0\r\nHost: 127.0.0.1\r\n\r\n",60);
+
     sendMessage(socket_fd,write_buffer,strlen(write_buffer));
     std::cout<<"send a message to server:"<<write_buffer<<std::endl;
     recvMessage(socket_fd,read_buffer,256);
@@ -71,7 +74,7 @@ int main()
     // //recv from server
     // recvMessage(socket_fd,buff,256);
     // std::cout<<"recv from server:"<<buff<<std::endl;
-    
+    sleep(50000);
     //close write but can read
     ::shutdown(socket_fd,SHUT_WR);
     // recvMessage(socket_fd,read_buffer,256);

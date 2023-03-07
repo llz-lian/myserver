@@ -68,7 +68,7 @@ public:
             //fd num > 0
             //wait_ret = [int num_active,epoll_event* events]
             auto [num_active,ret_events] = __worker_epoll.wait();
-            std::cout<<"epool return\n";
+            // std::cout<<"epool return\n";
             if(num_active<0)
             {
                 if(errno==EINTR)
@@ -85,13 +85,16 @@ public:
                     #ifdef DEBUG
                     std::cout<<"fd is closed:"<<now_fd<<std::endl;
                     #endif
-                    std::cout<<"fd is closed:"<<now_fd<<std::endl;
                     //close read
                     //COMPLETE => CLOSE
-                    if(now_events!=nullptr&&now_events->state == Event::COMPLETE)
+                    if(now_events!=nullptr)
                     {
-                        now_events->state = Event::NEED_CLOSE;
-                        __sub_workers.submit(Worker::__eventHandle,now_events,this);
+                        now_events->fd_closed = true;
+                        if(now_events->state == Event::COMPLETE)
+                        {
+                            now_events->state = Event::NEED_CLOSE;
+                            __sub_workers.submit(Worker::__eventHandle,now_events,this);
+                        }
                     }
                 }else if(!now_events)
                 {
@@ -105,7 +108,11 @@ public:
                 else if(now_events->state==Event::COMPLETE && ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
                 {
                     __sub_workers.submit(Worker::__eventHandle,now_events,this);
+                }else if (now_events->state==Event::WAIT_WRITE && ret_events[i].events&EPOLLOUT)
+                {
+                    __sub_workers.submit(Worker::__eventHandle,now_events,this);
                 }
+                
             }
             for(auto [fd,events]:fd_events)
             {
@@ -128,7 +135,7 @@ public:
         __worker_epoll.removeFd(fd);
         fd_events[fd] = nullptr;
         delete event;
-        // ::close(fd);
+        ::close(fd);
         active_fd_num--;
         #ifdef DEBUG
         std::cout<<"call closeFd:"<<fd<<std::endl;
@@ -143,6 +150,7 @@ public:
         event->resetFlags();
         Event::toNextState(event);
         // std::cout<<"call complete\n";
+        //now state still complete 
         return;
     }
     void run()
@@ -170,7 +178,13 @@ private:
         int fd = event->fd;
         {
             std::unique_lock<std::mutex> lock(*(w->event_locks[fd]));
-            //run
+            //run before check
+            if(w->fd_events[fd]==nullptr)
+            {
+                delete w->event_locks[fd];
+                w->event_locks[fd] = nullptr;
+                return;
+            }
             event->getHandle()();
         }
         //unlock

@@ -26,7 +26,7 @@ int setNonBlock(int fd)
 }
 
 
-int getServerFd(int port)
+int getServerFd(int port,bool nonblock)
 {
     sockaddr_in server_addr;
     bzero(&server_addr,sizeof(sockaddr_in));
@@ -37,7 +37,10 @@ int getServerFd(int port)
     //inet_pton(PF_INET,your_ip,&server_addr.sin_addr);
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     //create scoket non block
-    int server_sock_fd = socket(PF_INET,SOCK_STREAM|SOCK_NONBLOCK,0);
+    int flags = SOCK_STREAM;
+    if(nonblock)
+        flags = flags|SOCK_NONBLOCK;
+    int server_sock_fd = socket(PF_INET,flags,0);
     if(server_sock_fd<0)
     {
         std::cerr<<strerror(errno)<<std::endl;
@@ -65,6 +68,8 @@ int getServerFd(int port)
 
 bool sendMessageNonBlock(Event* event,const char * message,const int message_len)
 {
+    if(event->fd_closed)
+        return false;
     int sendFd = event->fd;
     int send_ret = ::send(sendFd,message+event->write_bytes,message_len-event->write_bytes,0);
     //send return how many bits it send.
@@ -100,42 +105,48 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
 
 bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
 {
+    if(event->fd_closed)
+        return false;
     int recvFd = event->fd;
     bzero(buf+event->read_bytes,(buf_len - event->read_bytes)*sizeof(char));
-    int recv_ret = ::recv(recvFd,buf + event->read_bytes,buf_len - event->read_bytes,0);
-    if(recv_ret<0)
+    while (true)
     {
-        if(errno == EINTR)
+        int recv_ret = ::recv(recvFd,buf + event->read_bytes,buf_len - event->read_bytes,0);
+        if(recv_ret == 0)
         {
-            return true;
+            //client closed
+            return false;
         }
-        //client closed or read_complete
-        if((errno==EAGAIN)||(errno==EWOULDBLOCK))
+        if(recv_ret<0)
         {
-            //read complete
-            #ifdef DEBUG
-            std::cout<<"read complete"<<std::endl;
-            #endif
-            event->read_complete_flag = true;
-            return true;
+            if(errno == EINTR)
+            {
+                return true;
+            }
+            //read_complete
+            if((errno==EAGAIN)||(errno==EWOULDBLOCK))
+            {
+                //read complete
+                #ifdef DEBUG
+                std::cout<<"read complete"<<std::endl;
+                #endif
+                event->read_complete_flag = true;
+                return true;
+            }
+            std::cerr<<strerror(errno)<<std::endl;
+            throw std::runtime_error("recv error");
         }
-        std::cerr<<strerror(errno)<<std::endl;
-        throw std::runtime_error("recv error");
+        event->read_bytes += recv_ret;
+        #ifdef DEBUG
+        std::cout<<event->read_buffer.size()<<std::endl;
+        std::cout<<event->read_buffer<<std::endl;
+        #endif
+        if(event->read_bytes == event->read_buffer_size)
+        {
+            event->read_buffer_size = event->read_buffer_size * 2;
+            event->read_buffer.resize(event->read_buffer_size);
+        }
     }
-    event->read_bytes += recv_ret;
-    #ifdef DEBUG
-    std::cout<<event->read_buffer.size()<<std::endl;
-    std::cout<<event->read_buffer<<std::endl;
-    #endif
-    if(event->read_bytes<event->read_buffer_size||recv_ret==0)
-    {
-        event->read_complete_flag = true;
-        return true;
-    }
-    if(event->read_bytes == event->read_buffer_size)
-    {
-        event->read_buffer_size = event->read_buffer_size * 2;
-        event->read_buffer.resize(event->read_buffer_size);
-    }
+    
     return true;
 }

@@ -100,7 +100,7 @@ public:
         #ifdef DEBUG
         std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
         #endif
-        if(state == NEED_CLOSE)
+        if(state == NEED_CLOSE||state==COMPLETE)
         {
             return std::function<void()>([this,now_choose_handle](){now_choose_handle(this);});
         }
@@ -160,7 +160,7 @@ public:
     bool read_complete_flag = false;
     bool write_complete_flag = false;
     bool process_complete_flag = false;
-
+    bool fd_closed = false;
     //bytes need to write
     size_t write_bytes = 0;
     size_t read_bytes = 0;
