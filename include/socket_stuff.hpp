@@ -17,6 +17,7 @@
 #include<string.h>
 #include <unistd.h>
 #include <fcntl.h> 
+#include"Event.hpp"
 int setNonBlock(int fd)
 {
     int now_flags = fcntl(fd,F_GETFL);
@@ -86,7 +87,7 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
                 //must wait
                 return true;
             }
-            std::cerr<<strerror(errno)<<std::endl;
+            std::cerr<<"error orr at sendMessageNonBlock:"<<strerror(errno)<<std::endl;
             // throw std::runtime_error("send error");
             return false;
     }
@@ -108,6 +109,8 @@ bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
     if(event->fd_closed)
         return false;
     int recvFd = event->fd;
+    if(recvFd<=0)
+        return false;
     bzero(buf+event->read_bytes,(buf_len - event->read_bytes)*sizeof(char));
     while (true)
     {
@@ -133,7 +136,7 @@ bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
                 event->read_complete_flag = true;
                 return true;
             }
-            std::cerr<<strerror(errno)<<std::endl;
+            std::cerr<<"error occr at recvMessageNonBlock:"<<strerror(errno)<<std::endl;
             throw std::runtime_error("recv error");
         }
         event->read_bytes += recv_ret;

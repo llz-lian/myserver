@@ -11,7 +11,6 @@
 class Worker
 {
 public:
-    friend void eventHandle(Event * event,Worker * w);
     //server: threadpool.submit(run);
     //epoll wait   send event to sub_worker  check fd time out 
     Worker(HandleMap & handlemap,int sub_workers,std::string & pool_belong)
@@ -44,7 +43,8 @@ public:
     }
     void init()
     {
-        std::function<void(Event *)> close_func = [this](Event * event){
+        std::function<void(Event *)> close_func = [this](Event * event)
+        {
             this->closeFd(event);
         };
         __handleMap.bindHandle(close_func,"CLOSE");
@@ -53,6 +53,10 @@ public:
         {
             this->completeFd(event);
         };
+        for(int i = 1;i<=150;i++)
+        {
+            event_locks[i] = new std::mutex();
+        }
         __handleMap.bindHandle(complete_func,"COMPLETE");
     }
 
@@ -78,6 +82,8 @@ public:
             for(int i = 0;i<num_active;i++)
             {
                 int now_fd = ret_events[i].data.fd;
+                if(now_fd<=0)
+                    continue;
                 //events send to sub-worker
                 auto && now_events = fd_events[now_fd];
                 if(ret_events[i].events&EPOLLRDHUP)
@@ -96,32 +102,40 @@ public:
                             __sub_workers.submit(Worker::__eventHandle,now_events,this);
                         }
                     }
-                }else if(!now_events)
+                }
+                else if(!now_events)
                 {
                     //create and init events
                     Event * new_event = new Event(__handleMap,now_fd,&__sub_workers);
                     fd_events[now_fd] = new_event;
                     if(event_locks[now_fd]==nullptr)
+                    {
                         event_locks[now_fd] = new std::mutex();
-                    __sub_workers.submit(Worker::__eventHandle,now_events,this);
+                    }
+                    __sub_workers.submit(Worker::__eventHandle,fd_events[now_fd],this);
                 }
                 else if(now_events->state==Event::COMPLETE && ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
                 {
                     __sub_workers.submit(Worker::__eventHandle,now_events,this);
-                }else if (now_events->state==Event::WAIT_WRITE && ret_events[i].events&EPOLLOUT)
+                }
+                else if (now_events->state==Event::WAIT_WRITE && ret_events[i].events&EPOLLOUT)
                 {
                     __sub_workers.submit(Worker::__eventHandle,now_events,this);
                 }
-                
             }
             for(auto [fd,events]:fd_events)
             {
                 //poccess events timeout
                 //events must be COMPLETE
                 //set CLOSE
+                // if(events == nullptr)
+                // {
+                //     delete event_locks[fd];
+                // }
             }
         }
     }
+
     void addFd(int fd)
     {
         __worker_epoll.addFd(fd);
@@ -135,7 +149,8 @@ public:
         __worker_epoll.removeFd(fd);
         fd_events[fd] = nullptr;
         delete event;
-        ::close(fd);
+        // fd_events.erase(fd);
+        ::shutdown(fd,SHUT_RDWR);
         active_fd_num--;
         #ifdef DEBUG
         std::cout<<"call closeFd:"<<fd<<std::endl;
@@ -177,22 +192,27 @@ private:
             return;
         int fd = event->fd;
         {
+            // if(w->event_locks[fd]==nullptr)
+            // {
+            //     w->event_locks[fd] = new std::mutex();
+            // }
             std::unique_lock<std::mutex> lock(*(w->event_locks[fd]));
             //run before check
             if(w->fd_events[fd]==nullptr)
             {
-                delete w->event_locks[fd];
-                w->event_locks[fd] = nullptr;
+                // delete w->event_locks[fd];
+                // w->event_locks[fd] = nullptr;
                 return;
             }
             event->getHandle()();
         }
-        //unlock
+        // unlock
         if(w->fd_events[fd]==nullptr)
         {
             //removed lock
-            delete w->event_locks[fd];
-            w->event_locks[fd] = nullptr;
+            // delete w->event_locks[fd];
+            // w->event_locks[fd] = nullptr;
+            //erase
         }
     }
 };

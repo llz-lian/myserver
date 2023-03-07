@@ -29,6 +29,8 @@ public:
     }
     bool addFd(int fd)
     {
+        if(fd<=0)
+            return false;
         ::epoll_event now_event;
         bzero(&now_event,sizeof(epoll_event));
         //fd should set non_block

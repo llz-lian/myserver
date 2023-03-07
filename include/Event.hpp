@@ -89,6 +89,11 @@ public:
     Event(Event && event)
         :fd(event.fd),handle(event.handle),pool(event.pool)
     {__init();};
+    Event(Event * event)
+        :fd(event->fd),handle(event->handle),pool(event->pool),state(event->state)
+    {
+        __init();
+    }
     ~Event(){
         fd = -1;
     };

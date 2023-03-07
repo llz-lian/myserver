@@ -41,6 +41,7 @@ void MyWrite(Event *event)
     // }
     // //send body
     event->write_bytes=0;
+    // std::cout<<event->write_buffer<<std::endl;
     if(!sendMessageNonBlock(event,event->write_buffer.c_str(),event->write_buffer.size()+1))
     {
         //set event state
