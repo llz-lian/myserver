@@ -131,12 +131,15 @@ public:
         {    
             return;
         }
+        if(fd<=0)
+            return;
         pool->submit(getHandle());
     }
     void setClose()
     {
         // std::unique_lock<std::mutex> task_lock(lock);
-        state = NEED_CLOSE;
+        if(this!=nullptr)
+            state = NEED_CLOSE;
     }
 
 

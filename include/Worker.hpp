@@ -74,7 +74,7 @@ public:
                     #endif
                     std::cout<<"fd is closed:"<<now_fd<<std::endl;
                     //close read
-                    if(!now_events)
+                    if(now_events!=nullptr)
                     {
                         now_events->setClose();
                         //remember not EPOLLRDHUP any more
