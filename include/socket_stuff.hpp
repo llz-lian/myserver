@@ -69,7 +69,7 @@ int getServerFd(int port,bool nonblock)
 
 bool sendMessageNonBlock(Event* event,const char * message,const int message_len)
 {
-    if(event->fd_closed)
+    if(event->should_remove)
         return false;
     int sendFd = event->fd;
     int send_ret = ::send(sendFd,message+event->write_bytes,message_len-event->write_bytes,0);
@@ -106,7 +106,7 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
 
 bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
 {
-    if(event->fd_closed)
+    if(event->should_remove)
         return false;
     int recvFd = event->fd;
     if(recvFd<=0)

@@ -9,7 +9,7 @@ void MyRead(Event *event)
     if(!recvMessageNonBlock(event,&event->read_buffer[0],event->read_buffer_size))
     {
         //READ => CLOSE
-        event->state = Event::NEED_CLOSE;
+        event->state = EventStuff::NEED_CLOSE;
     }
     // std::cout<<"call read\n";
 }
@@ -46,11 +46,11 @@ void MyWrite(Event *event)
     {
         //set event state
         //WRITE => CLOSE
-        event->state = Event::NEED_CLOSE;
+        event->state = EventStuff::NEED_CLOSE;
     }
     // std::cout<<"call write\n";
     // shutdown client
-    event->state = Event::NEED_CLOSE;
+    event->state = EventStuff::NEED_CLOSE;
 }
 int main()
 {

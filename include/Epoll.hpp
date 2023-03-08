@@ -34,20 +34,26 @@ public:
         ::epoll_event now_event;
         bzero(&now_event,sizeof(epoll_event));
         //fd should set non_block
-        now_event.events = EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP;
+        now_event.events = EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP|EPOLLONESHOT;
         now_event.data.fd = fd;
         return __epoll_ctl(EPOLL_CTL_ADD,fd,&now_event);
     }
 
     bool removeFd(int fd)
     {
-        bzero(&__events[fd],sizeof(::epoll_event));
+        if(fd<=0)
+            return false;
         return __epoll_ctl(EPOLL_CTL_DEL,fd,nullptr);
     }
     bool modFd(int fd,uint32_t flags)
     {
-        __events[fd].events = flags;
-        return __epoll_ctl(EPOLL_CTL_MOD,fd,&__events[fd]);
+        if(fd<=0)
+            return false;
+        ::epoll_event now_event;
+        bzero(&now_event,sizeof(epoll_event));
+        now_event.data.fd = fd;
+        now_event.events = flags;
+        return __epoll_ctl(EPOLL_CTL_MOD,fd,&now_event);
     }
     auto wait()
     {
@@ -62,10 +68,16 @@ public:
 private:
     int __epoll_fd;
     int __sleep_times = -1;
+    // std::vector<::epoll_event> __events;
     ::epoll_event __events[MAX_EPOLL_LISTEN_EVENTS];
+    std::mutex __epoll_ctl_lock;
     bool __epoll_ctl(int op,int fd,::epoll_event * now_event)
-    {
-        int ctl_ret = epoll_ctl(__epoll_fd,op,fd,now_event);
+    {   
+        int ctl_ret = 1;
+        {
+            std::unique_lock<std::mutex> lock(__epoll_ctl_lock);
+            ctl_ret = epoll_ctl(__epoll_fd,op,fd,now_event);
+        }
         if(ctl_ret<0)
         {
             std::cerr<<"Epoll addFd: "<<strerror(errno)<<std::endl;
