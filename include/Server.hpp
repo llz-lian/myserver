@@ -62,7 +62,7 @@ public:
             //non block
             setNonBlock(client_fd);
             // std::cout<<"arrive fd:"<<client_fd<<std::endl;
-            // std::cout<<"send mission to worker id:"<<now_choose_workers<<std::endl;
+            std::cout<<"send mission to worker id:"<<now_choose_workers<<std::endl;
             workers[now_choose_workers]->addFd(client_fd);
             now_choose_workers = (now_choose_workers + 1) % __num_workers;
         }

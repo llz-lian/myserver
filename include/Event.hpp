@@ -17,11 +17,11 @@ public:
     ~EventStuff(){};
     static const EventStuff getEventStuff()
     {
-        static const EventStuff eventstuff =  EventStuff();
+        static const EventStuff eventstuff;
         return eventstuff;
     }
     static const std::unordered_map<int,std::string> state_to_string;
-    enum STATE {WAIT_READ,WAIT_PROCCESS,WAIT_WRITE,COMPLETE,NEED_CLOSE};
+    enum STATE {WAIT_READ,WAIT_PROCCESS,WAIT_WRITE,COMPLETE,NEED_CLOSE,CLOSED};
 };
 
 class Event

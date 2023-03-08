@@ -102,12 +102,24 @@ void Worker::work()
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
             }
         }
-        // for(auto [fd,events]:fd_events)
-        // {
-        //     //poccess events timeout
-        //     //events must be COMPLETE
-        //     //set CLOSE
-        // }
+        {
+            std::shared_lock<std::shared_mutex> lck (__map_write_lock);
+            std::vector<int> need_remove_inmap;
+            for(auto [fd,event]:fd_events)
+            {
+                //timeout and complete and not submit
+                if(event!=nullptr && event->fd == 0&& event->state == EventStuff::CLOSED)
+                {
+                    delete event;
+                    fd_events[fd] = nullptr;
+                    need_remove_inmap.push_back(fd);
+                }
+            }
+            for(int fd:need_remove_inmap)
+            {
+                fd_events.erase(fd);
+            }
+        }
     }
 }
 void Worker::addFd(int fd)
@@ -117,10 +129,14 @@ void Worker::addFd(int fd)
         std::cout<<"reach worker max fd!\n";
         return;
     }
-    __worker_epoll.addFd(fd);
-    if(active_fd_num == 0)
-        __check_fd_num.notify_all();
-    active_fd_num++;
+
+    if(__worker_epoll.addFd(fd))
+    {
+        if(active_fd_num == 0)
+            __check_fd_num.notify_all();
+        active_fd_num++;
+    }
+
 }
 
 void Worker::closeFd(Event * event)
@@ -132,12 +148,26 @@ void Worker::closeFd(Event * event)
     if(fd_events.find(fd)==fd_events.end())
         return;
     //has lock
-    __worker_epoll.removeFd(fd);
-    // dont change map in sub thread!
-    // delete event;
-    event->should_remove = true;
-    ::shutdown(fd,SHUT_RDWR);
-    active_fd_num--;
+    if(__worker_epoll.removeFd(fd))
+    {
+        // dont change map in sub thread!
+        // delete event;
+        event->should_remove = true;
+
+        ::shutdown(fd,SHUT_RDWR);
+        // struct linger linger;
+        // linger.l_onoff = 1;
+        // linger.l_linger = 0;
+        // setsockopt(fd, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
+        close(fd);
+
+        active_fd_num--;
+
+        event->fd = 0;
+        event->state = EventStuff::CLOSED;
+    }
+    
+
     #ifdef DEBUG
     std::cout<<"call closeFd:"<<fd<<std::endl;
     #endif

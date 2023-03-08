@@ -6,7 +6,8 @@ const std::unordered_map<int,std::string> EventStuff::state_to_string{
     {EventStuff::WAIT_PROCCESS,"PROCCESS"},
     {EventStuff::WAIT_WRITE,"WRITE"},
     {EventStuff::COMPLETE,"COMPLETE"},
-    {EventStuff::NEED_CLOSE,"CLOSE"}
+    {EventStuff::NEED_CLOSE,"CLOSE"},
+    {EventStuff::CLOSED,"CLOSED"}
 };
 
 
@@ -18,6 +19,7 @@ HandleMap::HandleMap(){
     handle["PROCCESS"] = foo;
     handle["CLOSE"] = foo;
     handle["COMPLETE"] = foo;
+    handle["CLOSED"] = foo;
 };
 
 HandleMap::HandleMap(const HandleMap & map)
