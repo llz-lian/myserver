@@ -46,12 +46,6 @@ private:
 
     Epoll __worker_epoll;
 
-    std::condition_variable __check_fd_num;
-    std::mutex __lock;
-    
-    //not safe!
-
-
     std::shared_mutex __map_write_lock;
 
     std::unordered_map<int,Event*> fd_events;
