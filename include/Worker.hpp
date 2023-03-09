@@ -3,7 +3,9 @@
 #include"Handle.hpp"
 #include"Event.hpp"
 #include"Epoll.hpp"
+#include"shared_queue.hpp"
 #include<sys/socket.h>
+#include<sys/eventfd.h>
 #include<unordered_map>
 #include<mutex>
 #include<condition_variable>
@@ -27,11 +29,17 @@ public:
     void addFd(int fd);
     void closeFd(Event * event);
     void completeFd(Event * event);
+    void handleClosefd();
+    void handleWaitQueue();
     void run()
     {
         work();
     }
     std::atomic<int> active_fd_num = 0;
+    int notify_fd = 0;
+    SharedQueue<int> wait_add_queue;
+    SharedQueue<int> wait_close_queue;
+
 private:
     //event->read() => event->poccess(const char *) => event->write(const char *)
     std::ThreadPool __sub_workers;
@@ -44,7 +52,6 @@ private:
     //not safe!
 
 
-    std::mutex __map_lock;
     std::shared_mutex __map_write_lock;
 
     std::unordered_map<int,Event*> fd_events;

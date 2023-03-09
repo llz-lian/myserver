@@ -1,5 +1,5 @@
 #include"include/Worker.hpp"
-
+#include<stdexcept>
 
 Worker::Worker(HandleMap & handlemap,int sub_workers,std::string & pool_belong)
     :__handleMap(handlemap),__sub_workers(sub_workers,pool_belong),__worker_epoll(WORKER_SLEEP_TIMES)
@@ -16,10 +16,25 @@ Worker::Worker(Worker && w)
 {
     active_fd_num = 0;
 }
-Worker::~Worker(){}
+Worker::~Worker(){
+    for(auto [fd,event]:fd_events)
+    {
+        delete event;
+        event = nullptr;
+    }
+}
 
 void Worker::init()
 {
+    notify_fd = eventfd(0,0);
+    if(!__worker_epoll.addFd(notify_fd))
+    {
+        throw std::runtime_error("Worker init eventfd failed!");
+    }
+    if(!__worker_epoll.modFd(notify_fd,EPOLLIN|EPOLLET))
+    {
+        throw std::runtime_error("Worker init eventfd failed!");
+    }
     fd_events.reserve(MAX_EPOLL_LISTEN_EVENTS);
     std::function<void(Event *)> close_func = [this](Event * event)
     {
@@ -36,11 +51,11 @@ void Worker::work()
 {
     while (true)
     {
-        if(active_fd_num == 0)
-        {
-            std::unique_lock<std::mutex> lock(__lock);
-            __check_fd_num.wait(lock);
-        }
+        // if(active_fd_num == 0)
+        // {
+        //     std::unique_lock<std::mutex> lock(__lock);
+        //     __check_fd_num.wait(lock);
+        // }
         //fd num > 0
         //wait_ret = [int num_active,epoll_event* events]
         auto [num_active,ret_events] = __worker_epoll.wait();
@@ -56,11 +71,21 @@ void Worker::work()
             int now_fd = ret_events[i].data.fd;
             if(now_fd<=0)
                 continue;
+            //can add eventfd
+
+            if(now_fd == notify_fd)
+            {
+                //handle notify
+                uint64_t u;
+                int read_ret = read(notify_fd,&u,sizeof(uint64_t));
+                handleWaitQueue();
+                continue;
+            }
             //events send to sub-worker
             //worker can do []
             Event * now_events = nullptr;
             {
-                std::unique_lock<std::mutex> lck (__map_lock);
+                std::shared_lock<std::shared_mutex> lck (__map_write_lock);
                 if(fd_events.find(now_fd)!=fd_events.end())
                     now_events = fd_events.at(now_fd);
             }
@@ -73,8 +98,7 @@ void Worker::work()
                 //COMPLETE => CLOSE
                 if(now_events!=nullptr)
                 {
-                    now_events->should_remove = true;
-                    if(now_events->state == EventStuff::COMPLETE)
+                    if(!now_events->is_running)
                     {
                         now_events->state = EventStuff::NEED_CLOSE;
                         __sub_workers.submit(Worker::__eventHandle,now_events,this);
@@ -89,7 +113,12 @@ void Worker::work()
                 Event * new_event = new Event(__handleMap,now_fd,this);
                 fd_events[now_fd] = new_event;
                 // event_locks[now_fd] = new std::mutex();
-                __sub_workers.submit(Worker::__eventHandle,new_event,this);
+                if(ret_events[i].events&EPOLLIN)
+                    __sub_workers.submit(Worker::__eventHandle,new_event,this);
+            }
+            else if(now_events->state==EventStuff::WAIT_READ && ret_events[i].events&EPOLLIN)
+            {
+                __sub_workers.submit(Worker::__eventHandle,now_events,this);
             }
             else if(now_events->state==EventStuff::COMPLETE && ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
             {
@@ -102,23 +131,42 @@ void Worker::work()
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
             }
         }
-        {
-            std::shared_lock<std::shared_mutex> lck (__map_write_lock);
-            std::vector<int> need_remove_inmap;
-            for(auto [fd,event]:fd_events)
-            {
-                //timeout and complete and not submit
-                if(event!=nullptr && event->fd == 0&& event->state == EventStuff::CLOSED)
-                {
-                    delete event;
-                    fd_events[fd] = nullptr;
-                    need_remove_inmap.push_back(fd);
-                }
-            }
-            for(int fd:need_remove_inmap)
-            {
-                fd_events.erase(fd);
-            }
+        handleClosefd();
+    }
+}
+void Worker::handleClosefd()
+{
+    std::unique_lock<std::shared_mutex> lck (__map_write_lock);
+    int n = wait_close_queue.size();
+    while(n-->0)
+    {
+        int fd = wait_close_queue.front();wait_close_queue.pop();
+        auto event = fd_events[fd];
+        delete event;
+        fd_events.erase(fd);
+        active_fd_num--;
+
+        ::shutdown(fd,SHUT_RDWR);
+        ::close(fd);
+        std::cout<<"closed fd:"<<fd<<std::endl;
+    }
+}
+
+void Worker::handleWaitQueue()
+{
+    std::unique_lock<std::shared_mutex> lock(__map_write_lock);
+    int n = wait_add_queue.size();//noly pick now visible fd
+    while(n-->0)
+    {
+        int fd = wait_add_queue.front();wait_add_queue.pop();
+        if(fd_events.find(fd)!=fd_events.end())
+            __worker_epoll.modFd(fd,EPOLLIN|EPOLLOUT|EPOLLET|EPOLLONESHOT|EPOLLRDHUP);
+        else
+        {   
+            addFd(int(fd));
+            Event * new_event = nullptr;
+            new_event = new Event(__handleMap,fd,this);
+            fd_events[fd] = new_event;
         }
     }
 }
@@ -132,45 +180,31 @@ void Worker::addFd(int fd)
 
     if(__worker_epoll.addFd(fd))
     {
-        if(active_fd_num == 0)
-            __check_fd_num.notify_all();
+        std::cout<<"fd added:"<<fd<<std::endl;
+        // if(active_fd_num == 0)
+        //     __check_fd_num.notify_all();
         active_fd_num++;
     }
-
 }
 
 void Worker::closeFd(Event * event)
 {
-    std::unique_lock<std::mutex> lock(__map_lock);
+    // std::shared_lock<std::shared_mutex> lock(__map_write_lock);
     if(event == nullptr)
         return;
     int fd = event->fd;
-    if(fd_events.find(fd)==fd_events.end())
-        return;
     //has lock
-    if(__worker_epoll.removeFd(fd))
-    {
-        // dont change map in sub thread!
-        // delete event;
-        event->should_remove = true;
+    uint64_t u = fd;
+    //if put these below write may cause invalid memory access
+    event->fd = 0;
+    event->is_running = false;
+    event->state = EventStuff::CLOSED;
 
-        ::shutdown(fd,SHUT_RDWR);
-        // struct linger linger;
-        // linger.l_onoff = 1;
-        // linger.l_linger = 0;
-        // setsockopt(fd, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
-        close(fd);
+    int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
+    //if ret<0 we also set closed and push
+    event->myMaster->wait_close_queue.push(fd);
+    std::cout<<"fd ready to close:"<<fd<<std::endl;
 
-        active_fd_num--;
-
-        event->fd = 0;
-        event->state = EventStuff::CLOSED;
-    }
-    
-
-    #ifdef DEBUG
-    std::cout<<"call closeFd:"<<fd<<std::endl;
-    #endif
 }
 
 void Worker::completeFd(Event * event)
@@ -180,7 +214,9 @@ void Worker::completeFd(Event * event)
     //change to WAIT_READ
     event->resetFlags();
     Event::toNextState(event);
-    // std::cout<<"call complete\n";
+    #ifdef DEBUG
+    std::cout<<"call complete\n";
+    #endif
     //now state still complete 
     return;
 }
@@ -190,18 +226,12 @@ void Worker::__eventHandle(Event * event,Worker * w)
         return;
     int fd = event->fd;
     {
-        // if(w->event_locks[fd]==nullptr)
-        // {
-        //     w->event_locks[fd] = new std::mutex();
-        // }
-        //run before check
+        std::shared_lock<std::shared_mutex> lock(w->__map_write_lock);
         if(w->fd_events.find(fd)!=w->fd_events.end()&&w->fd_events.at(fd)==nullptr)
         {
-            // delete w->event_locks[fd];
-            // w->event_locks[fd] = nullptr;
             return;
         }
-        
-        event->getHandle()();
+        event->is_running = true;
     }
+    event->getHandle()();
 }

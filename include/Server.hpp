@@ -61,10 +61,23 @@ public:
             }
             //non block
             setNonBlock(client_fd);
-            // std::cout<<"arrive fd:"<<client_fd<<std::endl;
-            std::cout<<"send mission to worker id:"<<now_choose_workers<<std::endl;
-            workers[now_choose_workers]->addFd(client_fd);
-            now_choose_workers = (now_choose_workers + 1) % __num_workers;
+            std::cout<<"arrive fd:"<<client_fd<<std::endl;
+            // std::cout<<"send mission to worker id:"<<now_choose_workers<<std::endl;
+            //maybe not do it in main thread
+            // workers[now_choose_workers]->addFd(client_fd);
+            //notify workers to add fd
+            uint64_t u = client_fd;
+            //unsafe need block
+            
+                int write_ret = write(workers[now_choose_workers]->notify_fd,&u,sizeof(uint64_t));
+                if(write_ret<0)
+                {
+                    std::cerr<<strerror(errno)<<std::endl;
+                }
+                else{
+                    workers[now_choose_workers]->wait_add_queue.push(client_fd);
+                    now_choose_workers = (now_choose_workers + 1) % __num_workers;
+                }
         }
     }
 private:

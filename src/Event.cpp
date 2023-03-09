@@ -102,7 +102,12 @@ void Event::toNextState(Event * evnet)
     {
         //add fd
         //has lock
-        evnet->myMaster->addFd(evnet->fd);
+        // evnet->myMaster->addFd(evnet->fd);
+        //worker add fd
+        evnet->is_running = false;
+        uint64_t u = evnet->fd;
+        int write_ret = write(evnet->myMaster->notify_fd,&u,sizeof(uint64_t));
+        evnet->myMaster->wait_add_queue.push(evnet->fd);
         return;
     }
     evnet->getHandle()();

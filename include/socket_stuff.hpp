@@ -69,7 +69,7 @@ int getServerFd(int port,bool nonblock)
 
 bool sendMessageNonBlock(Event* event,const char * message,const int message_len)
 {
-    if(event->should_remove)
+    if(!event->is_running)
         return false;
     int sendFd = event->fd;
     int send_ret = ::send(sendFd,message+event->write_bytes,message_len-event->write_bytes,0);
@@ -104,17 +104,17 @@ bool sendMessageNonBlock(Event* event,const char * message,const int message_len
     return true;
 }
 
-bool recvMessageNonBlock(Event* event, char * buf,const int buf_len)
+bool recvMessageNonBlock(Event* event)
 {
-    if(event->should_remove)
+    if(!event->is_running)
         return false;
     int recvFd = event->fd;
     if(recvFd<=0)
         return false;
-    bzero(buf+event->read_bytes,(buf_len - event->read_bytes)*sizeof(char));
+    bzero(&event->read_buffer[0]+event->read_bytes,(event->read_buffer_size - event->read_bytes)*sizeof(char));
     while (true)
     {
-        int recv_ret = ::recv(recvFd,buf + event->read_bytes,buf_len - event->read_bytes,0);
+        int recv_ret = ::recv(recvFd,&event->read_buffer[0] + event->read_bytes,event->read_buffer_size - event->read_bytes,0);
         if(recv_ret == 0)
         {
             //client closed

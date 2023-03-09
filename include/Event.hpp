@@ -61,8 +61,7 @@ public:
     bool write_complete_flag = false;
     bool process_complete_flag = false;
     
-    bool should_remove = false;
-
+    std::atomic<bool> is_running = false;
     //bytes need to write
     size_t write_bytes = 0;
     size_t read_bytes = 0;

@@ -70,17 +70,28 @@ private:
     int __sleep_times = -1;
     // std::vector<::epoll_event> __events;
     ::epoll_event __events[MAX_EPOLL_LISTEN_EVENTS];
-    std::mutex __epoll_ctl_lock;
+    // std::mutex __epoll_ctl_lock;
     bool __epoll_ctl(int op,int fd,::epoll_event * now_event)
     {   
-        int ctl_ret = 1;
-        {
-            std::unique_lock<std::mutex> lock(__epoll_ctl_lock);
-            ctl_ret = epoll_ctl(__epoll_fd,op,fd,now_event);
-        }
+            // std::unique_lock<std::mutex> lock(__epoll_ctl_lock);
+            // ctl has lock
+        int ctl_ret = epoll_ctl(__epoll_fd,op,fd,now_event);
         if(ctl_ret<0)
         {
-            std::cerr<<"Epoll addFd: "<<strerror(errno)<<std::endl;
+            std::string errop = "";
+            if(op == EPOLL_CTL_ADD)
+            {
+                errop = "EPOLL_CTL_ADD";
+            }
+            else if(op = EPOLL_CTL_MOD)
+            {
+                errop = "EPOLL_CTL_MOD";
+            }
+            else if(op == EPOLL_CTL_DEL)
+            {
+                errop = "EPOLL_CTL_DEL";
+            }
+            std::cerr<<"Epoll ctl error "<<" op :"<<errop<<" fd: "<<fd<< " errno: " << strerror(errno)<<std::endl;
             return false;
         }
         return true;

@@ -52,7 +52,7 @@ int main()
     //connect complete
     //socket_fd <------> server
     //send something
-    sleep(50000);
+    // sleep(50000);
     bzero(write_buffer,sizeof(char)*256);
     strncpy(write_buffer,"GET / HTTP/1.0\r\nUser-Agent: client 1.0\r\nHost: 127.0.0.1\r\n\r\n",60);    
     sendMessage(socket_fd,write_buffer,strlen(write_buffer));
