@@ -3,6 +3,7 @@
 #include"config.hpp"
 #include"socket_stuff.hpp"
 #include<sys/socket.h>
+#include<signal.h>
 class Acceptor
 {
 public:
@@ -105,6 +106,13 @@ public:
     }
     void init(std::vector<std::function<void (Event *)>> handles)
     {
+        //sigalrm block
+        //only timerlist can recv sigalrm
+        ::sigset_t mask;
+        ::sigemptyset(&mask);
+        ::sigaddset(&mask,SIGALRM);
+        ::pthread_sigmask(SIG_BLOCK,&mask,nullptr);
+
         __map.bindHandle(handles[0],"READ");
         __map.bindHandle(handles[1],"PROCCESS");
         __map.bindHandle(handles[2],"WRITE");

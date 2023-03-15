@@ -132,6 +132,7 @@ void Worker::work()
             }
         }
         handleClosefd();
+        //handle time out
     }
 }
 void Worker::handleClosefd()
@@ -140,13 +141,20 @@ void Worker::handleClosefd()
     int n = wait_close_queue.size();
     while(n-->0)
     {
-        int fd = wait_close_queue.front();wait_close_queue.pop();
+        int fd = wait_close_queue.pop();
+        if(fd_events.find(fd) ==fd_events.end())
+            continue;
         auto event = fd_events[fd];
         delete event;
         fd_events.erase(fd);
-        active_fd_num--;
 
+        active_fd_num--;
+        __worker_epoll.removeFd(fd);
         ::shutdown(fd,SHUT_RDWR);
+        ::linger l;
+        l.l_linger = 1;
+        l.l_onoff = 1;
+        ::setsockopt(fd,SOL_SOCKET,SO_LINGER,&l,sizeof(::linger));
         ::close(fd);
         std::cout<<"closed fd:"<<fd<<std::endl;
     }
@@ -158,33 +166,38 @@ void Worker::handleWaitQueue()
     int n = wait_add_queue.size();//noly pick now visible fd
     while(n-->0)
     {
-        int fd = wait_add_queue.front();wait_add_queue.pop();
+        int fd = wait_add_queue.pop();
         if(fd_events.find(fd)!=fd_events.end())
             __worker_epoll.modFd(fd,EPOLLIN|EPOLLOUT|EPOLLET|EPOLLONESHOT|EPOLLRDHUP);
         else
         {   
-            addFd(int(fd));
-            Event * new_event = nullptr;
-            new_event = new Event(__handleMap,fd,this);
-            fd_events[fd] = new_event;
+
+            if(!addFd(int(fd)))
+                continue;
+            // Event * new_event = nullptr;
+            // new_event = new Event(__handleMap,fd,this);
+            fd_events[fd] = new Event(__handleMap,fd,this);;
         }
     }
 }
-void Worker::addFd(int fd)
+bool Worker::addFd(int fd)
 {
-    if(active_fd_num>=MAX_EPOLL_LISTEN_EVENTS)
+    if(active_fd_num>=MAX_EPOLL_LISTEN_EVENTS-1)
     {
-        std::cout<<"reach worker max fd!\n";
-        return;
+        std::cout<<"reach worker max fd! event_size:"<<fd_events.size()<<"\n";
+        close(fd);
+        return false;
     }
 
     if(__worker_epoll.addFd(fd))
     {
-        std::cout<<"fd added:"<<fd<<std::endl;
+        // std::cout<<"fd added:"<<fd<<std::endl;
         // if(active_fd_num == 0)
         //     __check_fd_num.notify_all();
         active_fd_num++;
+        return true;
     }
+    return false;
 }
 
 void Worker::closeFd(Event * event)
@@ -197,14 +210,13 @@ void Worker::closeFd(Event * event)
     uint64_t u = fd;
     //if put these below write may cause invalid memory access
     event->fd = 0;
-    event->is_running = false;
+    // event->is_running = false;
     event->state = EventStuff::CLOSED;
-
-    int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
     //if ret<0 we also set closed and push
     event->myMaster->wait_close_queue.push(fd);
-    std::cout<<"fd ready to close:"<<fd<<std::endl;
-
+    
+    int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
+    // std::cout<<"fd ready to close:"<<fd<<std::endl;
 }
 
 void Worker::completeFd(Event * event)
@@ -231,7 +243,8 @@ void Worker::__eventHandle(Event * event,Worker * w)
         {
             return;
         }
-        event->is_running = true;
     }
+    event->is_running.store(true);
     event->getHandle()();
+    event->is_running.store(false);
 }

@@ -32,12 +32,12 @@ public:
     }
     void push(T&t)
     {
-        std::unique_lock<std::mutex> lock(__mutex);
+        std::lock_guard<std::mutex> lock(__mutex);
         __queue.emplace(t);
     }
     void push(T&&t)
     {
-        std::unique_lock<std::mutex> lock(__mutex);
+        std::lock_guard<std::mutex> lock(__mutex);
         __queue.emplace(t);
     }
     void pop()

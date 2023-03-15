@@ -16,7 +16,11 @@ void MyRead(Event *event)
 void MyProcess(Event *event)
 {
     //prepare write buffer and write stuff
-    
+    if(!event->is_running)
+    {
+        event->state = EventStuff::NEED_CLOSE;
+        return;
+    }
     if(event->read_bytes!=0)
         event->write_buffer = "HTTP/1.0 200 OK\r\nContent-Type: text/html;charset=utf-8\r\nContent-Length: 88\r\n\r\n<html><head><title>Wrox Homepage</title></head><body>-- body goes here --</body></html>\0";
     // std::cout<<event->write_buffer<<std::endl;

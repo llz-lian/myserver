@@ -26,7 +26,7 @@ public:
 
     void work();
 
-    void addFd(int fd);
+    bool addFd(int fd);
     void closeFd(Event * event);
     void completeFd(Event * event);
     void handleClosefd();

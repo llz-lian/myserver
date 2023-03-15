@@ -30,6 +30,7 @@ private:
     inline void __init()
     {
         // __initStateToString();
+        is_running.store(false);
         read_buffer.resize(READ_BUFFER_DEFALUT_SIZE);read_buffer_size = READ_BUFFER_DEFALUT_SIZE;
     }
 public:
@@ -61,7 +62,8 @@ public:
     bool write_complete_flag = false;
     bool process_complete_flag = false;
     
-    std::atomic<bool> is_running = false;
+    std::atomic<bool> is_running;
+    // bool is_running = false;
     //bytes need to write
     size_t write_bytes = 0;
     size_t read_bytes = 0;
