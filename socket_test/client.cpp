@@ -60,7 +60,7 @@ int main()
 
     recvMessage(socket_fd,read_buffer,256);
     std::cout<<"recv from server:"<<read_buffer<<std::endl;
-    sleep(5);
+    sleep(5000);
 
     bzero(write_buffer,sizeof(char)*256);
     strncpy(write_buffer,"GET / HTTP/1.0\r\nUser-Agent: client 1.0\r\nHost: 127.0.0.1\r\n\r\n",60);

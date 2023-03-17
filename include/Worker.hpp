@@ -4,6 +4,7 @@
 #include"Event.hpp"
 #include"Epoll.hpp"
 #include"shared_queue.hpp"
+#include"Timer.hpp"
 #include<sys/socket.h>
 #include<sys/eventfd.h>
 #include<unordered_map>
@@ -31,6 +32,7 @@ public:
     void completeFd(Event * event);
     void handleClosefd();
     void handleWaitQueue();
+    void handelTimeOut();
     void run()
     {
         work();
@@ -39,7 +41,7 @@ public:
     int notify_fd = 0;
     SharedQueue<int> wait_add_queue;
     SharedQueue<int> wait_close_queue;
-
+    SharedQueue<int> time_out_queue;
 private:
     //event->read() => event->poccess(const char *) => event->write(const char *)
     std::ThreadPool __sub_workers;
@@ -51,6 +53,7 @@ private:
     std::unordered_map<int,Event*> fd_events;
     // std::unordered_map<int,std::mutex*> event_locks;//grow big
     
+    TimerList timer;
 
 
     //every worke has its own map

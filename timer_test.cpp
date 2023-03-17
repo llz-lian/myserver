@@ -107,8 +107,6 @@ class TimerList
 private:
     std::priority_queue<Timer> __timer_queue;
     bool is_run = true;
-    std::vector<std::thread> worker;
-    std::queue<std::function<void()>> task_queue;
     int lateset_trigger_ms = -1;
 public:
     TimerList()

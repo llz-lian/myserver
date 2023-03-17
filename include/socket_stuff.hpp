@@ -114,6 +114,8 @@ bool recvMessageNonBlock(Event* event)
     bzero(&event->read_buffer[0]+event->read_bytes,(event->read_buffer_size - event->read_bytes)*sizeof(char));
     while (true)
     {
+        if(!event->is_running)
+            return false;
         int recv_ret = ::recv(recvFd,&event->read_buffer[0] + event->read_bytes,event->read_buffer_size - event->read_bytes,0);
         if(recv_ret == 0)
         {

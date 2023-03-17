@@ -58,6 +58,7 @@ void Worker::work()
         // }
         //fd num > 0
         //wait_ret = [int num_active,epoll_event* events]
+        __worker_epoll.setSleepTime(timer.lateset_trigger_ms);
         auto [num_active,ret_events] = __worker_epoll.wait();
         // std::cout<<"epool return\n";
         if(num_active<0)
@@ -79,6 +80,7 @@ void Worker::work()
                 uint64_t u;
                 int read_ret = read(notify_fd,&u,sizeof(uint64_t));
                 handleWaitQueue();
+                handleClosefd();
                 continue;
             }
             //events send to sub-worker
@@ -88,6 +90,8 @@ void Worker::work()
                 std::shared_lock<std::shared_mutex> lck (__map_write_lock);
                 if(fd_events.find(now_fd)!=fd_events.end())
                     now_events = fd_events.at(now_fd);
+                else
+                    continue;
             }
             if(ret_events[i].events&EPOLLRDHUP)
             {
@@ -105,17 +109,6 @@ void Worker::work()
                     }
                 }
             }
-            else if(!now_events)
-            {
-                //create and init events
-                //lock
-                std::shared_lock<std::shared_mutex> lck (__map_write_lock);
-                Event * new_event = new Event(__handleMap,now_fd,this);
-                fd_events[now_fd] = new_event;
-                // event_locks[now_fd] = new std::mutex();
-                if(ret_events[i].events&EPOLLIN)
-                    __sub_workers.submit(Worker::__eventHandle,new_event,this);
-            }
             else if(now_events->state==EventStuff::WAIT_READ && ret_events[i].events&EPOLLIN)
             {
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
@@ -131,10 +124,38 @@ void Worker::work()
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
             }
         }
-        handleClosefd();
         //handle time out
+        timer.tick();
+        handelTimeOut();
     }
 }
+
+void Worker::handelTimeOut()
+{
+    std::unique_lock<std::shared_mutex> lock(__map_write_lock);
+    int n = time_out_queue.size();
+    while(n-->0)
+    {
+        //time out event
+        int fd = time_out_queue.pop();
+        if(fd_events.find(fd) ==fd_events.end())
+            continue;
+        auto event = fd_events[fd];
+        //event is complete
+        if(event->is_running == false && (event->state == EventStuff::COMPLETE||event->state == EventStuff::WAIT_READ||event->state == EventStuff::CLOSED))
+        {
+            event->state = EventStuff::CLOSED;
+            wait_close_queue.push(fd);
+            uint64_t u = 1;
+            int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
+        }
+        else
+        {
+            time_out_queue.push(fd);
+        }
+    }
+}
+
 void Worker::handleClosefd()
 {
     std::unique_lock<std::shared_mutex> lck (__map_write_lock);
@@ -147,7 +168,6 @@ void Worker::handleClosefd()
         auto event = fd_events[fd];
         delete event;
         fd_events.erase(fd);
-
         active_fd_num--;
         __worker_epoll.removeFd(fd);
         ::shutdown(fd,SHUT_RDWR);
@@ -171,12 +191,19 @@ void Worker::handleWaitQueue()
             __worker_epoll.modFd(fd,EPOLLIN|EPOLLOUT|EPOLLET|EPOLLONESHOT|EPOLLRDHUP);
         else
         {   
-
             if(!addFd(int(fd)))
                 continue;
             // Event * new_event = nullptr;
             // new_event = new Event(__handleMap,fd,this);
             fd_events[fd] = new Event(__handleMap,fd,this);;
+            auto time_out_task = Timer::bindTask([this](int fd){
+                std::unique_lock<std::shared_mutex> lck (this->__map_write_lock);
+                if(this->fd_events.find(fd)==this->fd_events.end())
+                    return;
+                fd_events.at(fd)->is_running = false;
+                this->time_out_queue.push(fd);
+            },fd);
+            timer.addTimer(Timer(time_out_task,std::chrono::steady_clock::now(),Timer::genDurbyms(FD_TIMEOUT),1));
         }
     }
 }
@@ -216,7 +243,7 @@ void Worker::closeFd(Event * event)
     event->myMaster->wait_close_queue.push(fd);
     
     int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
-    // std::cout<<"fd ready to close:"<<fd<<std::endl;
+    std::cout<<"fd ready to close:"<<fd<<std::endl;
 }
 
 void Worker::completeFd(Event * event)

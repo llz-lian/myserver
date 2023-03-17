@@ -55,6 +55,10 @@ public:
         now_event.events = flags;
         return __epoll_ctl(EPOLL_CTL_MOD,fd,&now_event);
     }
+    void setSleepTime(int time)
+    {
+        __sleep_times = time;
+    }
     auto wait()
     {
         int epoll_wait_ret = epoll_wait(__epoll_fd,__events,MAX_EPOLL_LISTEN_EVENTS,__sleep_times);

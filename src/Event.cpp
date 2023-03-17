@@ -83,6 +83,10 @@ std::function<void()> Event::getHandle()
 }
 void Event::toNextState(Event * evnet)
 {
+    if(evnet->is_running == false)
+    {
+        return;
+    }
     if(evnet->state == EventStuff::NEED_CLOSE||evnet->state == EventStuff::CLOSED)
     {
         evnet->getHandle()();
