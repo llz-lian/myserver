@@ -15,7 +15,7 @@ private:
     EventStuff(/* args */){};
 public:
     ~EventStuff(){};
-    static const EventStuff getEventStuff()
+    static const EventStuff & getEventStuff()
     {
         static const EventStuff eventstuff;
         return eventstuff;
@@ -34,7 +34,7 @@ private:
         read_buffer.resize(READ_BUFFER_DEFALUT_SIZE);read_buffer_size = READ_BUFFER_DEFALUT_SIZE;
     }
 public:
-    Event(const HandleMap & map,int recive_fd,Worker * w);
+    Event(int recive_fd,Worker * w);
     Event(const Event & event);
     Event(const Event && event);
     Event(const Event * event);
@@ -50,8 +50,6 @@ public:
     int fd = 0;
     //state
     int state = EventStuff::WAIT_READ;
-    //handle
-    const Handle handle;
     //read write stuff
     std::string read_buffer;
     std::string write_buffer;

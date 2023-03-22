@@ -5,23 +5,28 @@
 class Event;
 class HandleMap
 {
-public:
+private:
     HandleMap();
-    HandleMap(const HandleMap & map);
-    HandleMap(const HandleMap && map);
-    void bindHandle(std::function<void(Event * )> handle,std::string && method);
-    std::unordered_map<std::string,std::function<void(Event *)>> handle;
+    HandleMap(const HandleMap & map)=delete;
+    HandleMap(const HandleMap && map)=delete;
+public:
+    static HandleMap & getHandleMap()
+    {
+        static HandleMap handle_map;
+        return handle_map;
+    }
+    static void bindHandle(std::function<void(Event * )> handle,std::string && method);
+    static std::unordered_map<std::string,std::function<void(Event *)>> handle;
 };
 class Handle
 {
 public:
-    Handle(const HandleMap & map):handle_map(map){};
-    Handle(const Handle & handle):handle_map(handle.handle_map){};
-    Handle(const Handle && handle):handle_map(handle.handle_map){};
+    Handle(){};
+    Handle(const Handle & handle){};
+    Handle(const Handle && handle){};
 
-    std::function<void(Event *)> getHandle(const std::string & s) const
+    static std::function<void(Event *)> getHandle(const std::string & s)
     {
-        return handle_map.handle.at(s);
+        return HandleMap::getHandleMap().handle.at(s);
     }
-    const HandleMap & handle_map;
 };

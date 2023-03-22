@@ -114,14 +114,15 @@ public:
         // ::pthread_sigmask(SIG_BLOCK,&mask,nullptr);
         ::signal(SIGPIPE,SIG_IGN);
 
-        __map.bindHandle(handles[0],"READ");
-        __map.bindHandle(handles[1],"PROCCESS");
-        __map.bindHandle(handles[2],"WRITE");
+        HandleMap::bindHandle(handles[0],"READ");
+        HandleMap::bindHandle(handles[1],"PROCCESS");
+        HandleMap::bindHandle(handles[2],"WRITE");
+
         __workers.resize(NUM_WORKERS);
         for(int i = 0;i<NUM_WORKERS;i++)
         {
             std::string belong = "__workers[" + std::to_string(i) + "]";
-            __workers[i] = new Worker(__map,NUM_WORKERS_THREADS,belong);
+            __workers[i] = new Worker(NUM_WORKERS_THREADS,belong);
         }
         for(auto && worker:__workers)
         {
@@ -147,8 +148,5 @@ private:
     std::ThreadPool __workers_pool;
     //Worker(HandleMap & handlemap,int sub_workers)
     std::vector<Worker*> __workers;
-
-    HandleMap __map;
     Acceptor __acceptor;
-
 };

@@ -10,57 +10,41 @@ const std::unordered_map<int,std::string> EventStuff::state_to_string{
     {EventStuff::CLOSED,"CLOSED"}
 };
 
-
+std::unordered_map<std::string,std::function<void(Event *)>> HandleMap::handle{
+{"READ", [](Event * e){}},
+{"WRITE", [](Event * e){}},
+{"PROCCESS", [](Event * e){}},
+{"CLOSE", [](Event * e){}},
+{"COMPLETE", [](Event * e){}},
+{"CLOSED", [](Event * e){}}
+};
 HandleMap::HandleMap(){
     //init handle[str,func]
-    std::function<void(Event *)> foo = [](Event * e){};
-    handle["READ"] = foo;
-    handle["WRITE"] = foo;
-    handle["PROCCESS"] = foo;
-    handle["CLOSE"] = foo;
-    handle["COMPLETE"] = foo;
-    handle["CLOSED"] = foo;
 };
 
-HandleMap::HandleMap(const HandleMap & map)
-{
-    //init handle[str,func]
-    for(auto && [str,func]:map.handle)
-    {
-        handle[str] = func;
-    }
-};
-HandleMap::HandleMap(const HandleMap && map)
-{
-    //init handle[str,func]
-    for(auto && [str,func]:map.handle)
-    {
-        handle[str] = func;
-    }
-};
 void HandleMap::bindHandle(std::function<void(Event * )> handle,std::string && method)
 {
     #ifdef DEBUG
     std::cout<<"bind handle:"<<method<<std::endl;
     #endif
-    this->handle[method] = [handle](Event * event){
+    HandleMap::handle[method] = [handle](Event * event){
         handle(event);
     };
 }
 
 
 
-Event::Event(const HandleMap & map,int recive_fd,Worker * w)
-    :fd(recive_fd),handle(map),myMaster(w)
+Event::Event(int recive_fd,Worker * w)
+    :fd(recive_fd),myMaster(w)
 {__init();};
 Event::Event(const Event & event)
-    :fd(event.fd),handle(event.handle),myMaster(event.myMaster)
+    :fd(event.fd),myMaster(event.myMaster)
 {__init();};
 Event::Event(const Event && event)
-    :fd(event.fd),handle(event.handle),myMaster(event.myMaster)
+    :fd(event.fd),myMaster(event.myMaster)
 {__init();};
 Event::Event(const Event * event)
-    :fd(event->fd),handle(event->handle),state(event->state),myMaster(event->myMaster)
+    :fd(event->fd),state(event->state),myMaster(event->myMaster)
 {
     __init();
 }
@@ -68,7 +52,7 @@ Event::Event(const Event * event)
 
 std::function<void()> Event::getHandle()
 {
-    std::function<void(Event *) > now_choose_handle = handle.getHandle(EventStuff::getEventStuff().state_to_string.at(state));
+    std::function<void(Event *) > now_choose_handle = Handle::getHandle(EventStuff::getEventStuff().state_to_string.at(state));
     #ifdef DEBUG
     std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
     #endif

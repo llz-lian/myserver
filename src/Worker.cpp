@@ -1,18 +1,18 @@
 #include"include/Worker.hpp"
 #include<stdexcept>
 
-Worker::Worker(HandleMap & handlemap,int sub_workers,std::string & pool_belong)
-    :__handleMap(handlemap),__sub_workers(sub_workers,pool_belong),__worker_epoll(WORKER_SLEEP_TIMES)
+Worker::Worker(int sub_workers,std::string & pool_belong)
+    :__sub_workers(sub_workers,pool_belong),__worker_epoll(WORKER_SLEEP_TIMES)
 {
     active_fd_num = 0;
 }
 Worker::Worker(const Worker & w)
-    :__handleMap(w.__handleMap),__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
+    :__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
 {
     active_fd_num = 0;
 }
 Worker::Worker(Worker && w)
-    :__handleMap(w.__handleMap),__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
+    :__sub_workers(w.__sub_workers),__worker_epoll(w.__worker_epoll)
 {
     active_fd_num = 0;
 }
@@ -40,12 +40,12 @@ void Worker::init()
     {
         this->closeFd(event);
     };
-    __handleMap.bindHandle(close_func,"CLOSE");
+    HandleMap::bindHandle(close_func,"CLOSE");
     std::function<void(Event *)> complete_func = [this](Event * event)
     {
         this->completeFd(event);
     };
-    __handleMap.bindHandle(complete_func,"COMPLETE");
+    HandleMap::bindHandle(complete_func,"COMPLETE");
 }
 void Worker::work()
 {
@@ -196,7 +196,7 @@ void Worker::handleWaitQueue()
                 continue;
             // Event * new_event = nullptr;
             // new_event = new Event(__handleMap,fd,this);
-            fd_events[fd] = new Event(__handleMap,fd,this);;
+            fd_events[fd] = new Event(fd,this);
             auto time_out_task = Timer::bindTask([this](int fd){
                 std::unique_lock<std::shared_mutex> lck (this->__map_write_lock);
                 if(this->fd_events.find(fd)==this->fd_events.end())

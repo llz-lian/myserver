@@ -19,7 +19,7 @@ class Worker
 public:
     //server: threadpool.submit(run);
     //epoll wait   send event to sub_worker  check fd time out 
-    Worker(HandleMap & handlemap,int sub_workers,std::string & pool_belong);
+    Worker(int sub_workers,std::string & pool_belong);
     Worker(const Worker & w);
     Worker(Worker && w);
     ~Worker();
@@ -57,6 +57,5 @@ private:
 
 
     //every worke has its own map
-    HandleMap __handleMap;
     static void __eventHandle(Event * event,Worker * w);
 };

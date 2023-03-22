@@ -31,17 +31,16 @@ private:
     {
         if(url == "/")
         {
-            url = "html/index.html";
-            return true;
+            url = "/index.html";
         }
         // if(url == "/favicon.ico")
         // {
         //     url = "html/ico/favicon.ico";
         //     return true;
         // }
-        std::string path = "html" + url;
+        url = "html" + url;
         struct stat buffer;   
-        return (stat (path.c_str(), &buffer) == 0); 
+        return (stat (url.c_str(), &buffer) == 0); 
     }
     bool __parseMethod(std::string & head,int & index)//meet space
     {

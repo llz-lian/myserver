@@ -84,6 +84,7 @@ bool sendFile(Event * event,const char * file_path)
     {
         if(event->write_bytes >= buffer.st_size)
         {
+            ::close(file_fd);
             event->write_complete_flag = true;
             return true;
         }
@@ -91,6 +92,7 @@ bool sendFile(Event * event,const char * file_path)
         // std::cout<<"send file send:"<<ret<<"bytes\n";
         if(ret<0)
         {
+            ::close(file_fd);
             if(errno == EAGAIN)
             {
                 //system buffer is full
