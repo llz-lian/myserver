@@ -52,7 +52,7 @@ Event::Event(const Event * event)
 
 std::function<void()> Event::getHandle()
 {
-    std::function<void(Event *) > now_choose_handle = Handle::getHandle(EventStuff::getEventStuff().state_to_string.at(state));
+    const std::function<void(Event *) > & now_choose_handle = Handle::getHandle(EventStuff::getEventStuff().state_to_string.at(state));
     #ifdef DEBUG
     std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
     #endif

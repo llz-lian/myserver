@@ -75,6 +75,7 @@ bool sendFile(Event * event,const char * file_path)
 
     if(file_fd<0)
     {
+        std::cout<<"sendFile:no such file:"<<file_path<<std::endl;
         return false;
     }
 

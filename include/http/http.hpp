@@ -154,7 +154,7 @@ public:
     ~ResponseBody(){};
     void initBad()
     {
-        file_path = "html/error.html";
+        file_path = "/home/llz/codes/myserver/bin/html/error.html";
     }
     void initGood(std::string & s)
     {

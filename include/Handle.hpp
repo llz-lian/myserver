@@ -25,8 +25,9 @@ public:
     Handle(const Handle & handle){};
     Handle(const Handle && handle){};
 
-    static std::function<void(Event *)> getHandle(const std::string & s)
+    static const std::function<void(Event *)> & getHandle(const std::string & s)
     {
-        return HandleMap::getHandleMap().handle.at(s);
+        const std::function<void(Event *)> & ret = HandleMap::handle.at(s);;
+        return ret;
     }
 };
