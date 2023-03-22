@@ -49,7 +49,7 @@ void MyWrite(Event *event)
     }
     // std::cout<<"call write\n";
     // shutdown client
-    // event->state = EventStuff::NEED_CLOSE;
+    event->state = EventStuff::NEED_CLOSE;
 }
 int main()
 {

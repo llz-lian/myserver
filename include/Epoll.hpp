@@ -34,7 +34,7 @@ public:
         ::epoll_event now_event;
         bzero(&now_event,sizeof(epoll_event));
         //fd should set non_block
-        now_event.events = EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP|EPOLLONESHOT;
+        now_event.events = EPOLLIN|EPOLLET|EPOLLRDHUP|EPOLLONESHOT|EPOLLPRI;
         now_event.data.fd = fd;
         return __epoll_ctl(EPOLL_CTL_ADD,fd,&now_event);
     }

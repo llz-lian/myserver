@@ -34,11 +34,11 @@ private:
             url = "html/index.html";
             return true;
         }
-        if(url == "/favicon.ico")
-        {
-            url = "html/ico/favicon.ico";
-            return true;
-        }
+        // if(url == "/favicon.ico")
+        // {
+        //     url = "html/ico/favicon.ico";
+        //     return true;
+        // }
         std::string path = "html" + url;
         struct stat buffer;   
         return (stat (path.c_str(), &buffer) == 0); 

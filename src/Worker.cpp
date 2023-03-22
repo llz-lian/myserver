@@ -93,6 +93,7 @@ void Worker::work()
                 else
                     continue;
             }
+            // std::cout<<"EPOLL EVENTS:"<<ret_events[i].events<<std::endl;
             if(ret_events[i].events&EPOLLRDHUP)
             {
                 #ifdef DEBUG
@@ -109,11 +110,11 @@ void Worker::work()
                     }
                 }
             }
-            else if(now_events->state==EventStuff::WAIT_READ && ret_events[i].events&EPOLLIN)
+            else if(now_events->state==EventStuff::WAIT_READ && (ret_events[i].events&EPOLLIN || ret_events[i].events&EPOLLPRI))
             {
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
             }
-            else if(now_events->state==EventStuff::COMPLETE && ret_events[i].events&EPOLLIN && ret_events[i].events&EPOLLOUT)
+            else if(now_events->state==EventStuff::COMPLETE && (ret_events[i].events&EPOLLIN || ret_events[i].events&EPOLLPRI))
             {
                 now_events->fd = now_fd;
                 __sub_workers.submit(Worker::__eventHandle,now_events,this);
@@ -188,7 +189,7 @@ void Worker::handleWaitQueue()
     {
         int fd = wait_add_queue.pop();
         if(fd_events.find(fd)!=fd_events.end())
-            __worker_epoll.modFd(fd,EPOLLIN|EPOLLOUT|EPOLLET|EPOLLONESHOT|EPOLLRDHUP);
+            __worker_epoll.modFd(fd,EPOLLIN|EPOLLET|EPOLLONESHOT|EPOLLRDHUP|EPOLLPRI);
         else
         {   
             if(!addFd(int(fd)))
