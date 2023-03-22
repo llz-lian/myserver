@@ -1,9 +1,18 @@
 # A toy webserver
-## over all structure
+## Over All Structure
 ![](https://github.com/llz-lian/myserver/blob/master/imgs/server.jpg)
-
+## Speed
+![](https://github.com/llz-lian/myserver/blob/master/imgs/test.PNG)
 ## Compile from source code
-run ```cmake --build build```
+run
+```
+mkdir build
+cd build
+cmake ..
+cd ..
+cmake --build build
+cd bin
+```
 ## Use Example
 1. set config.hpp
 2. write read, write and process functions
@@ -38,5 +47,6 @@ int main()
 * use epoll edge trigger
 * c++ 11 threadpool
 * Round-Robin accept
+* A Timer
 ## Thanks
 thanks to &laquo;Linux高性能服务器编程&raquo;-游双
