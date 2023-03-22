@@ -4,5 +4,5 @@
 /socket_test/build
 /socket_test/client
 socket_test/server
-bin/
 /webtest
+/bin/server_test
