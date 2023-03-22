@@ -2,6 +2,7 @@
 #include<iostream>
 #include"include/Server.hpp"
 #include<time.h>
+#include<include/http/http.hpp>
 void MyRead(Event *event)
 {
     int read_fd = event->fd;
@@ -21,9 +22,11 @@ void MyProcess(Event *event)
         event->state = EventStuff::NEED_CLOSE;
         return;
     }
+    HTTP http;
     if(event->read_bytes!=0)
-        event->write_buffer = "HTTP/1.0 200 OK\r\nContent-Type: text/html;charset=utf-8\r\nContent-Length: 88\r\n\r\n<html><head><title>Wrox Homepage</title></head><body>-- body goes here --</body></html>\0";
-    // std::cout<<event->write_buffer<<std::endl;
+        http.handleHead(event->read_buffer);
+    event->write_buffer = http.response_head.head_buffer;
+    event->read_buffer = http.response_body.file_path;
     event->process_complete_flag = true;
     // std::cout<<"call process\n";
 }
@@ -37,9 +40,16 @@ void MyWrite(Event *event)
         //WRITE => CLOSE
         event->state = EventStuff::NEED_CLOSE;
     }
+    //send file
+    event->write_bytes=0;
+    if(!sendFile(event,event->read_buffer.c_str()))
+    {
+        event->state = EventStuff::NEED_CLOSE;
+        return;
+    }
     // std::cout<<"call write\n";
     // shutdown client
-    event->state = EventStuff::NEED_CLOSE;
+    // event->state = EventStuff::NEED_CLOSE;
 }
 int main()
 {

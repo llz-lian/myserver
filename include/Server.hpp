@@ -62,7 +62,7 @@ public:
             }
             //non block
             setNonBlock(client_fd);
-            std::cout<<"arrive fd:"<<client_fd<<std::endl;
+            // std::cout<<"arrive fd:"<<client_fd<<std::endl;
             // std::cout<<"send mission to worker id:"<<now_choose_workers<<std::endl;
             //maybe not do it in main thread
             // workers[now_choose_workers]->addFd(client_fd);
@@ -108,10 +108,11 @@ public:
     {
         //sigalrm block
         //only timerlist can recv sigalrm
-        ::sigset_t mask;
-        ::sigemptyset(&mask);
-        ::sigaddset(&mask,SIGALRM);
-        ::pthread_sigmask(SIG_BLOCK,&mask,nullptr);
+        // ::sigset_t mask;
+        // ::sigemptyset(&mask);
+        // ::sigaddset(&mask,SIGALRM);
+        // ::pthread_sigmask(SIG_BLOCK,&mask,nullptr);
+        ::signal(SIGPIPE,SIG_IGN);
 
         __map.bindHandle(handles[0],"READ");
         __map.bindHandle(handles[1],"PROCCESS");

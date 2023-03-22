@@ -17,6 +17,10 @@
 #include<string.h>
 #include <unistd.h>
 #include <fcntl.h> 
+#include <sys/types.h>
+#include <sys/stat.h> 
+#include <unistd.h>
+#include <sys/sendfile.h>
 #include"Event.hpp"
 int setNonBlock(int fd)
 {
@@ -65,7 +69,41 @@ int getServerFd(int port,bool nonblock)
 
 
 
+bool sendFile(Event * event,const char * file_path)
+{
+    int file_fd = ::open(file_path,O_RDONLY);
 
+    if(file_fd<0)
+    {
+        return false;
+    }
+
+    struct stat buffer;
+    fstat(file_fd,&buffer);
+    while(true)
+    {
+        if(event->write_bytes >= buffer.st_size)
+        {
+            event->write_complete_flag = true;
+            return true;
+        }
+        int ret = ::sendfile(event->fd,file_fd,(off_t*)&event->write_bytes,buffer.st_size);
+        // std::cout<<"send file send:"<<ret<<"bytes\n";
+        if(ret<0)
+        {
+            if(errno == EAGAIN)
+            {
+                //system buffer is full
+                //must wait
+                return true;
+            }
+            std::cerr<<"error orr at sendMessageNonBlock:"<<strerror(errno)<<std::endl;
+            return false;
+        }
+        event->write_bytes += ret;
+    }
+    return true;
+}
 
 bool sendMessageNonBlock(Event* event,const char * message,const int message_len)
 {
@@ -129,7 +167,7 @@ bool recvMessageNonBlock(Event* event)
                 return true;
             }
             //read_complete
-            if((errno==EAGAIN)||(errno==EWOULDBLOCK))
+            if(errno==EWOULDBLOCK)
             {
                 //read complete
                 #ifdef DEBUG

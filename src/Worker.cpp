@@ -176,7 +176,7 @@ void Worker::handleClosefd()
         l.l_onoff = 1;
         ::setsockopt(fd,SOL_SOCKET,SO_LINGER,&l,sizeof(::linger));
         ::close(fd);
-        std::cout<<"closed fd:"<<fd<<std::endl;
+        // std::cout<<"closed fd:"<<fd<<std::endl;
     }
 }
 
@@ -243,7 +243,7 @@ void Worker::closeFd(Event * event)
     event->myMaster->wait_close_queue.push(fd);
     
     int write_ret = write(event->myMaster->notify_fd,&u,sizeof(uint64_t));
-    std::cout<<"fd ready to close:"<<fd<<std::endl;
+    // std::cout<<"fd ready to close:"<<fd<<std::endl;
 }
 
 void Worker::completeFd(Event * event)
