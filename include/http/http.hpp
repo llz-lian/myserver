@@ -69,7 +69,8 @@ private:
     {
         if(head[index] == '\r'&&head[index + 1]=='\n')
         {   
-            index += 1000;
+            head_size = index;
+            index += 10000000;
             return true;
         }
         std::string k;
@@ -92,6 +93,7 @@ public:
     std::string method;
     std::string url;
     std::string http_version;
+    size_t head_size;
     std::unordered_map<std::string,std::string> head_stuff;
     RequestHead(/* args */){};
     ~RequestHead(){};

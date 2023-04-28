@@ -56,7 +56,7 @@ std::function<void()> Event::getHandle()
     #ifdef DEBUG
     std::cout<<"get handle:"<<state_to_string[state]<<std::endl;
     #endif
-    if(state ==EventStuff::NEED_CLOSE||state==EventStuff::COMPLETE)
+    if(state ==EventStuff::NEED_CLOSE||state==EventStuff::COMPLETE||state == EventStuff::CLOSED)
     {
         return std::function<void()>([this,now_choose_handle](){now_choose_handle(this);});
     }
