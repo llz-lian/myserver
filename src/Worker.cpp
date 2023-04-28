@@ -167,6 +167,7 @@ void Worker::handleClosefd()
         if(fd_events.find(fd) ==fd_events.end())
             continue;
         auto event = fd_events[fd];
+        if(event->is_running) continue;
         delete event;
         fd_events.erase(fd);
         active_fd_num--;
